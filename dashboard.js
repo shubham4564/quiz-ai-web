@@ -527,30 +527,27 @@ document.addEventListener('DOMContentLoaded', () => {
         progressText.textContent = 'Analyzing PDF content...';
         
         try {
-            // Dynamically fetch models and build candidate list; fallback to static if empty
+            // Force single required model usage
+            const REQUIRED_MODEL = 'models/gemini-2.5-pro';
             const dynamicModels = await fetchAvailableModels(apiKey);
-            let candidateModels = dynamicModels.map(m => m.name);
-            if (!candidateModels.length) {
-                candidateModels = [
-                    'models/gemini-2.5-pro',
-                    'models/gemini-1.5-pro',
-                    'models/gemini-1.5-flash',
-                    'models/gemini-1.5-flash-8b'
-                ];
-                showAiStatus('ℹ️ Using fallback model list (dynamic discovery failed).', 'warning');
+            const meta = dynamicModels.find(m => (m.name === REQUIRED_MODEL || m.name === REQUIRED_MODEL.replace('models/','')));
+            if (!meta) {
+                throw new Error(`Required model ${REQUIRED_MODEL} not available in API list.`);
             }
-            let lastModelError = null;
-
-            // Build prompt once
-            
+            if (typeof meta.inputTokenLimit !== 'number' || typeof meta.outputTokenLimit !== 'number') {
+                throw new Error(`Required model ${REQUIRED_MODEL} missing token limit metadata.`);
+            }
             const isRegeneration = !!localStorage.getItem('quizData');
+            const approxCharsPerToken = 4;
+            const maxChars = Math.max(1000, Math.floor(meta.inputTokenLimit * approxCharsPerToken * 0.9));
+            const pdfSlice = uploadedPDFContent.substring(0, maxChars);
             const prompt = `You are an AI quiz generator. ${isRegeneration ? 'IMPORTANT: Produce a completely new, non-overlapping set of questions different from any previously generated for this PDF.' : 'Generate an initial set of questions.'}
 Based on the following text from a PDF document, generate a JSON array of ${numQuestions} multiple-choice quiz questions.
 The questions should cover distinct topics included in the document. For each question, provide four answer options, with exactly one correct answer. Include a brief explanation for the correct answer and explanations for every option.
 
-DOCUMENT TEXT:
+DOCUMENT TEXT (truncated to fit model limit):
 """
-${uploadedPDFContent.substring(0, 15000)}
+${pdfSlice}
 """
 
 REQUIREMENTS:
@@ -560,7 +557,7 @@ REQUIREMENTS:
 - Each option MUST include its own explanation string.
 - If this is a regeneration request, DO NOT repeat or paraphrase earlier questions; focus on different concepts or angles.
 - Avoid trivial duplication. Vary stems, verbs, and cognitive level (recall, understanding, application, analysis).
-- Format the output as a JSON array ONLY (no markdown fences, no commentary before or after). 
+- Output ONLY a JSON array (no markdown fences, no commentary before or after).
 
 JSON OUTPUT FORMAT (strict):
 [
@@ -570,65 +567,27 @@ JSON OUTPUT FORMAT (strict):
       {"text": "...", "correct": false, "explanation": "..."},
       {"text": "...", "correct": true, "explanation": "..."},
       {"text": "...", "correct": false, "explanation": "..."},
-      {"text": "...", "correct": false, "explanation": "...""}
+      {"text": "...", "correct": false, "explanation": "..."}
     ]
   }
 ]`;
-
-            let data = null;
-            for (let model of candidateModels) {
-                progressText.textContent = `Requesting model: ${model} ...`;
-                // If model id already prefixed with 'models/' use directly, else prefix.
-                const modelPath = model.startsWith('models/') ? model : `models/${model}`;
-                const apiURL = `https://generativelanguage.googleapis.com/v1beta/${modelPath}:generateContent?key=${apiKey}`;
-                try {
-                    const response = await fetch(apiURL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            contents: [{
-                                parts: [{ text: prompt }]
-                            }],
-                            generationConfig: (function(){
-                                // Attempt to tailor to model token limits if present
-                                const meta = dynamicModels.find(m => m.name === model);
-                                const caps = meta?.inputTokenLimit || meta?.outputTokenLimit ? {
-                                    maxOutputTokens: Math.min(4096, meta.outputTokenLimit || 4096)
-                                } : { maxOutputTokens: 4096 };
-                                return {
-                                    temperature: 0.7,
-                                    ...caps
-                                };
-                            })()
-                        })
-                    });
-
-                    if (!response.ok) {
-                        const errorData = await response.json().catch(() => ({}));
-                        const message = errorData.error?.message || `HTTP ${response.status}`;
-                        // If model not found, try next candidate
-                        if (/not found/i.test(message) || /unsupported/i.test(message)) {
-                            lastModelError = message;
-                            continue;
-                        }
-                        throw new Error(message);
-                    }
-                    data = await response.json();
-                    if (data?.candidates?.length) {
-                        break; // success
-                    } else {
-                        lastModelError = 'Empty candidates response';
-                    }
-                } catch (innerErr) {
-                    lastModelError = innerErr.message;
-                    continue; // try next model
-                }
+            progressText.textContent = `Requesting model: ${REQUIRED_MODEL} ...`;
+            const apiURL = `https://generativelanguage.googleapis.com/v1beta/${REQUIRED_MODEL}:generateContent?key=${apiKey}`;
+            const respPrimary = await fetch(apiURL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.7, maxOutputTokens: meta.outputTokenLimit }
+                })
+            });
+            if (!respPrimary.ok) {
+                const errData = await respPrimary.json().catch(()=>({}));
+                throw new Error(errData.error?.message || `HTTP ${respPrimary.status}`);
             }
-
-            if (!data) {
-                throw new Error(`Failed to get a response from Gemini models. Last error: ${lastModelError}`);
+            const data = await respPrimary.json();
+            if (!data?.candidates?.length) {
+                throw new Error('Empty candidates response from required model');
             }
 
             progressText.textContent = 'Processing AI response...';
@@ -796,19 +755,13 @@ JSON OUTPUT FORMAT (strict):
                     const supplementalPrompt = `You previously generated ${questions.length} quiz question objects (JSON) for a PDF but need ${remaining} MORE distinct ones.\n\nDO NOT repeat, paraphrase, or trivially alter these existing question stems:\n${priorList.map(q=>`- ${q}`).join('\n')}\n\nReturn ONLY a JSON array of EXACTLY ${remaining} NEW question objects using the SAME schema (no markdown fences, no commentary). Each must have 4 options, exactly one with \"correct\": true, and every option needs an explanation. If you cannot produce exactly ${remaining}, produce as many as possible but try very hard to reach the target.`;
 
                     try {
-                        // Choose first flash/pro model from dynamic list for supplemental; else fallback
-                        let supplementalModel = 'models/gemini-1.5-pro';
-                        if (dynamicModels && dynamicModels.length) {
-                            const preferred = dynamicModels.find(m => /pro/i.test(m.name)) || dynamicModels.find(m=>/flash/i.test(m.name));
-                            if (preferred) supplementalModel = preferred.name;
-                        }
-                        const apiURLSupplement = `https://generativelanguage.googleapis.com/v1beta/${supplementalModel}:generateContent?key=${apiKey}`;
+                        const apiURLSupplement = `https://generativelanguage.googleapis.com/v1beta/${REQUIRED_MODEL}:generateContent?key=${apiKey}`;
                         const resp = await fetch(apiURLSupplement, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                                 contents: [{ parts: [{ text: supplementalPrompt }] }],
-                                generationConfig: { temperature: 0.75, maxOutputTokens: 3584 }
+                                generationConfig: { temperature: 0.75, maxOutputTokens: meta.outputTokenLimit }
                             })
                         });
                         if (!resp.ok) {
@@ -1025,6 +978,7 @@ JSON OUTPUT FORMAT (strict):
     let score = 0;
     let wrongCount = 0;
     let answeredQuestions = new Set(); // Track which questions were answered
+    let answerStatus = {}; // questionIndex -> 'correct' | 'wrong'
 
     const questionEl = document.getElementById('question');
     const optionsContainer = document.getElementById('options-container');
@@ -1049,6 +1003,7 @@ JSON OUTPUT FORMAT (strict):
         score = 0;
         wrongCount = 0;
         answeredQuestions = new Set();
+        answerStatus = {};
         loadQuiz();
     }
 
@@ -1085,6 +1040,7 @@ JSON OUTPUT FORMAT (strict):
                     <div id="progress-bar"></div>
                     <span id="progress-text"></span>
                 </div>
+                <div id="question-nav" class="question-nav"></div>
                 <h2 id="question"></h2>
                 <ul id="options-container">
                     <li><label><input type="radio" name="answer" class="answer" id="a"><span id="a_text"></span></label></li>
@@ -1099,6 +1055,7 @@ JSON OUTPUT FORMAT (strict):
         const questionEl = document.getElementById('question');
         const optionsContainer = document.getElementById('options-container');
         const quizControls = document.getElementById('quiz-controls');
+    const navContainer = document.getElementById('question-nav');
 
         // Clear previous state
         quizControls.innerHTML = ''; // Clear buttons
@@ -1109,6 +1066,27 @@ JSON OUTPUT FORMAT (strict):
         const progress = ((currentQuiz + 1) / quizData.length) * 100;
         progressBar.style.width = `${progress}%`;
         progressText.textContent = `${currentQuiz + 1} / ${quizData.length}`;
+
+        // Build / rebuild question navigation buttons
+        if (navContainer) {
+            navContainer.innerHTML = '';
+            quizData.forEach((_, idx) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'qn-btn';
+                btn.textContent = idx + 1;
+                if (idx === currentQuiz) btn.classList.add('active');
+                if (answerStatus[idx] === 'correct') btn.classList.add('correct');
+                else if (answerStatus[idx] === 'wrong') btn.classList.add('wrong');
+                else if (answeredQuestions.has(idx)) btn.classList.add('answered');
+                btn.addEventListener('click', () => {
+                    if (idx === currentQuiz) return;
+                    currentQuiz = idx;
+                    loadQuiz();
+                });
+                navContainer.appendChild(btn);
+            });
+        }
         
         const currentQuizData = quizData[currentQuiz];
         
@@ -1183,8 +1161,10 @@ JSON OUTPUT FORMAT (strict):
         
         if (isCorrect) {
             score++;
+            answerStatus[currentQuiz] = 'correct';
         } else {
             wrongCount++;
+            answerStatus[currentQuiz] = 'wrong';
         }
         
         const optionsList = document.querySelectorAll('#options-container li');
@@ -1232,6 +1212,18 @@ JSON OUTPUT FORMAT (strict):
         }
         quizControls.innerHTML = '';
         quizControls.appendChild(nextBtn);
+
+        // Refresh nav styling after answer
+        const navContainer = document.getElementById('question-nav');
+        if (navContainer) {
+            [...navContainer.children].forEach((btn, idx) => {
+                btn.classList.remove('active','correct','wrong','answered');
+                if (idx === currentQuiz) btn.classList.add('active');
+                if (answerStatus[idx] === 'correct') btn.classList.add('correct');
+                else if (answerStatus[idx] === 'wrong') btn.classList.add('wrong');
+                else if (answeredQuestions.has(idx)) btn.classList.add('answered');
+            });
+        }
     }
 
     function showResults() {

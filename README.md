@@ -131,6 +131,12 @@ The JSON must be an array of question objects. Each option within a question mus
 - ❌ Red box for incorrect answers
 - One-sentence explanation of why the answer is correct
 
+### Question Jump Navigation
+- A compact navigation bar shows numbered buttons for every question.
+- Colors indicate status: Blue (current), Green (correct), Red (wrong), Yellow (answered – pending correctness classification), Neutral (unvisited).
+- Click any number to jump directly without losing recorded answers.
+- Updates live after each submission.
+
 ### AI Generation
 - Uses Google Gemini API with dynamic model discovery (prefers current Pro / Flash variants; falls back to a stable known list if discovery fails)
 - Analyzes PDF content intelligently
