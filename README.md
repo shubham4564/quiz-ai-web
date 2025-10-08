@@ -29,6 +29,8 @@ No password is required in this demo build (previous password gating was removed
   - A helpful hint.
   - A unique explanation for each of the four options.
 - **On-Page Status**: Get real-time feedback on the generation process without disruptive popups.
+- **Persistent Saved Quizzes**: Each successful generation from a PDF is stored and named automatically: `<FileBaseName> Quiz N` (e.g., `Lecture1 Quiz 1`, then `Lecture1 Quiz 2`). These appear under "Saved Quizzes" on the Home screen.
+- **Per-Quiz Management**: Click a saved quiz to open that exact version; delete individual quizzes without affecting others.
 
 #### ✍️ Manual JSON Entry
 - Add questions in bulk using a specific JSON format.
@@ -128,12 +130,13 @@ The JSON must be an array of question objects. Each option within a question mus
 - One-sentence explanation of why the answer is correct
 
 ### AI Generation
-- Uses Google Gemini API (multi-model fallback sequence: 2.5 Pro → 1.5 Pro → 1.5 Flash → 1.5 Flash 8B)
+- Uses Google Gemini API with dynamic model discovery (prefers current Pro / Flash variants; falls back to stable known list if discovery fails)
 - Analyzes PDF content intelligently
 - Generates diverse, non-overlapping questions (regeneration enforces novelty)
 - Automatically adds hints and explanations (or fills defaults)
 - Robust JSON handling: repairs malformed output, salvages valid objects, and supplements missing questions
 - Attempts supplemental batches until the exact requested count is reached; does not save partial sets
+- Automatically archives the successful set into a versioned list tied to the original PDF filename for iterative quiz builds.
 
 ### Score Display
 - Shows correct/incorrect count
@@ -200,6 +203,10 @@ The JSON must be an array of question objects. Each option within a question mus
 - Check browser console for errors
 - Clear browser cache and reload
 - Ensure JavaScript is enabled
+### Saved Quizzes Not Appearing
+- Ensure at least one full quiz was generated (partial sets are discarded)
+- Confirm browser localStorage is enabled (uses key `quizCollections`)
+- Using incognito / clearing site data will remove saved entries
 
 ## 📄 License
 

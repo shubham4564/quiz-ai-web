@@ -28,6 +28,26 @@
             
             <!-- Home View -->
             <div id="home-view" class="view active">
+                <!-- Collapsible Quick Guide -->
+                <button id="toggle-quick-guide" class="btn-secondary" style="width:100%; margin:0 0 1rem 0;">
+                    <span id="quick-guide-icon">📘</span>
+                    <span id="quick-guide-text">Show Quick Guide</span>
+                </button>
+                <div id="quick-guide-panel" class="instructions" style="display:none; margin-bottom:1.25rem;">
+                    <h4>ℹ️ Quick Guide</h4>
+                    <p><strong>For Quiz Takers:</strong></p>
+                    <ul>
+                        <li>Click "Take Quiz" to start.</li>
+                        <li>Click on your chosen answer for instant feedback.</li>
+                        <li>Use the "Next Question" button to proceed.</li>
+                    </ul>
+                    <p><strong>For Admins:</strong></p>
+                    <ul>
+                        <li>Click "Admin Panel" to manage questions.</li>
+                        <li>Generate quizzes from PDFs or add them manually via JSON.</li>
+                        <li>Use the provided example as a template.</li>
+                    </ul>
+                </div>
                 <div class="action-card" data-view="quiz">
                     <h3>📖 Take Quiz</h3>
                     <p>Start answering quiz questions and test your knowledge</p>
@@ -38,22 +58,13 @@
                     <p>Add or update quiz questions in bulk using JSON format</p>
                 </div>
                 
-                <div class="instructions">
-                    <h4>ℹ️ Quick Guide</h4>
-                    <p><strong>For Quiz Takers:</strong></p>
-                    <ul>
-                        <li>Click "Take Quiz" to start.</li>
-                        <li>Click on your chosen answer for instant feedback.</li>
-                        <li>Use the "Next Question" button to proceed.</li>
-                    </ul>
-                    
-                    <p><strong>For Admins:</strong></p>
-                    <ul>
-                        <li>Click "Admin Panel" to manage questions.</li>
-                        <li>Generate quizzes from PDFs or add them manually via JSON.</li>
-                        <li>Use the provided example as a template.</li>
-                    </ul>
+                <div class="saved-quizzes-section" id="saved-quizzes-section">
+                    <h4 style="margin-top:1.5rem; margin-bottom:0.75rem;">💾 Saved Quizzes</h4>
+                    <p class="saved-quizzes-hint" style="margin-top:0; font-size:0.8rem; color: var(--text-tertiary);">Quizzes generated from PDFs will appear here. Click to open or delete individually.</p>
+                    <div id="saved-quizzes-list" class="saved-quizzes-list" style="display:flex; flex-direction:column; gap:0.5rem;"></div>
+                    <div id="no-saved-quizzes" style="display:none; font-size:0.85rem; color: var(--text-secondary); background: var(--bg-tertiary); padding:0.75rem 1rem; border:1px dashed var(--border-color); border-radius:8px;">No saved quizzes yet. Generate one using the AI tab or add manually.</div>
                 </div>
+
             </div>
             
             <!-- Quiz View -->
@@ -172,5 +183,8 @@
     </div>
     
     <script src="dashboard.js"></script>
+    <footer class="site-footer">
+        Made by <strong>SHjoshi</strong>
+    </footer>
 </body>
 </html>

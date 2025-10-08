@@ -1,5 +1,163 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ============================================
+    // PERSISTED QUIZ COLLECTIONS
+    // ============================================
+    // Structure in localStorage under key 'quizCollections':
+    // {
+    //   items: [
+    //     { id: 'q_1699999999999_0', fileBase: 'MyPDF', fileName: 'MyPDF.pdf', index: 1, title: 'MyPDF Quiz 1', createdAt: 1699999999999, questions: [...] },
+    //     ...
+    //   ],
+    //   activeQuizId: 'q_...'
+    // }
+    function getQuizCollections() {
+        try {
+            const raw = localStorage.getItem('quizCollections');
+            if (!raw) return { items: [], activeQuizId: null };
+            const parsed = JSON.parse(raw);
+            if (!parsed.items) parsed.items = [];
+            return parsed;
+        } catch (e) { return { items: [], activeQuizId: null }; }
+    }
+    function saveQuizCollections(data) {
+        localStorage.setItem('quizCollections', JSON.stringify(data));
+    }
+    function setActiveQuizId(id) {
+        const data = getQuizCollections();
+        data.activeQuizId = id;
+        saveQuizCollections(data);
+    }
+    function getActiveQuiz() {
+        const data = getQuizCollections();
+        return data.items.find(i => i.id === data.activeQuizId) || null;
+    }
+    function migrateLegacySingleQuizIfNeeded() {
+        const collections = getQuizCollections();
+        if (collections.items.length === 0) {
+            const legacy = localStorage.getItem('quizData');
+            if (legacy) {
+                try {
+                    const questions = JSON.parse(legacy);
+                    if (Array.isArray(questions) && questions.length) {
+                        const createdAt = Date.now();
+                        const item = {
+                            id: 'legacy_' + createdAt,
+                            fileBase: 'Legacy',
+                            fileName: 'LegacyImport',
+                            index: 1,
+                            title: 'Legacy Quiz 1',
+                            createdAt,
+                            questions
+                        };
+                        collections.items.push(item);
+                        collections.activeQuizId = item.id;
+                        saveQuizCollections(collections);
+                    }
+                } catch(_){}
+            }
+        }
+    }
+    migrateLegacySingleQuizIfNeeded();
+    let lastUploadedFileName = null; // capture current PDF file name
+
+    function loadSavedQuizzesList() {
+        const container = document.getElementById('saved-quizzes-list');
+        const emptyState = document.getElementById('no-saved-quizzes');
+        if (!container) return;
+        const { items, activeQuizId } = getQuizCollections();
+        container.innerHTML = '';
+        if (!items.length) {
+            if (emptyState) emptyState.style.display = 'block';
+            return;
+        }
+        if (emptyState) emptyState.style.display = 'none';
+        items
+            .sort((a,b)=> b.createdAt - a.createdAt) // newest first
+            .forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'saved-quiz-item';
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.style.justifyContent = 'space-between';
+                div.style.gap = '0.75rem';
+                div.style.background = 'var(--bg-tertiary)';
+                div.style.border = '1px solid var(--border-color)';
+                div.style.padding = '0.65rem 0.85rem';
+                div.style.borderRadius = '8px';
+                div.style.cursor = 'pointer';
+                if (item.id === activeQuizId) {
+                    div.style.outline = '2px solid var(--accent-primary)';
+                }
+                const left = document.createElement('div');
+                left.style.display = 'flex';
+                left.style.flexDirection = 'column';
+                left.style.flex = '1';
+                const title = document.createElement('span');
+                title.textContent = item.title;
+                title.style.fontSize = '0.9rem';
+                title.style.fontWeight = '600';
+                title.style.color = 'var(--text-primary)';
+                const meta = document.createElement('span');
+                meta.textContent = `${item.questions.length} questions • ${item.fileName}`;
+                meta.style.fontSize = '0.7rem';
+                meta.style.color = 'var(--text-tertiary)';
+                left.appendChild(title);
+                left.appendChild(meta);
+                const actions = document.createElement('div');
+                actions.style.display = 'flex';
+                actions.style.gap = '0.35rem';
+                const openBtn = document.createElement('button');
+                openBtn.textContent = 'Open';
+                openBtn.className = 'btn-secondary';
+                openBtn.style.fontSize = '0.7rem';
+                openBtn.addEventListener('click', (e)=>{
+                    e.stopPropagation();
+                    launchSavedQuiz(item.id);
+                });
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '✖';
+                deleteBtn.style.background = 'var(--error-bg)';
+                deleteBtn.style.color = 'var(--error-text)';
+                deleteBtn.style.border = '1px solid var(--error-border)';
+                deleteBtn.style.fontSize = '0.7rem';
+                deleteBtn.addEventListener('click', (e)=>{
+                    e.stopPropagation();
+                    deleteSavedQuiz(item.id);
+                });
+                actions.appendChild(openBtn);
+                actions.appendChild(deleteBtn);
+                div.appendChild(left);
+                div.appendChild(actions);
+                div.addEventListener('click', ()=> launchSavedQuiz(item.id));
+                container.appendChild(div);
+            });
+    }
+    function launchSavedQuiz(id) {
+        const collections = getQuizCollections();
+        const item = collections.items.find(i=>i.id===id);
+        if(!item) return;
+        localStorage.setItem('quizData', JSON.stringify(item.questions));
+        setActiveQuizId(id);
+        loadSavedQuizzesList();
+        switchView('quiz');
+        // initQuiz will run when quiz view loads
+        initQuiz();
+    }
+    function deleteSavedQuiz(id) {
+        const data = getQuizCollections();
+        const idx = data.items.findIndex(i=>i.id===id);
+        if (idx === -1) return;
+        data.items.splice(idx,1);
+        if (data.activeQuizId === id) {
+            data.activeQuizId = null;
+            localStorage.removeItem('quizData');
+        }
+        saveQuizCollections(data);
+        loadSavedQuizzesList();
+        showAiStatus('Deleted quiz','info');
+    }
+
+    // ============================================
     // THEME TOGGLE
     // ============================================
     function toggleTheme() {
@@ -146,12 +304,17 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('cancel-clear').onclick = () => status.remove();
             document.getElementById('confirm-clear').onclick = () => {
                 const backup = localStorage.getItem('quizData');
+                const collectionsBackup = localStorage.getItem('quizCollections');
                 localStorage.removeItem('quizData');
+                localStorage.removeItem('quizCollections');
+                loadSavedQuizzesList();
                 status.innerHTML = `🗑️ All quiz data deleted. <button id="undo-clear" class="btn-secondary" style="margin-left:.5rem;">Undo</button>`;
                 const undoBtn = document.getElementById('undo-clear');
                 if (undoBtn) {
                     undoBtn.onclick = () => {
                         if (backup) localStorage.setItem('quizData', backup);
+                        if (collectionsBackup) localStorage.setItem('quizCollections', collectionsBackup);
+                        loadSavedQuizzesList();
                         status.textContent = '✅ Restore successful.';
                         setTimeout(()=>status.remove(), 3000);
                     };
@@ -184,6 +347,25 @@ document.addEventListener('DOMContentLoaded', () => {
     if(instructionsBtn) {
         instructionsBtn.addEventListener('click', toggleInstructions);
     }
+
+    // Quick Guide Toggle (Home view)
+    function toggleQuickGuide() {
+        const panel = document.getElementById('quick-guide-panel');
+        const icon = document.getElementById('quick-guide-icon');
+        const text = document.getElementById('quick-guide-text');
+        if (!panel || !icon || !text) return;
+        if (panel.style.display === 'none' || panel.style.display === '') {
+            panel.style.display = 'block';
+            icon.textContent = '📗';
+            text.textContent = 'Hide Quick Guide';
+        } else {
+            panel.style.display = 'none';
+            icon.textContent = '📘';
+            text.textContent = 'Show Quick Guide';
+        }
+    }
+    const quickGuideBtn = document.getElementById('toggle-quick-guide');
+    if (quickGuideBtn) quickGuideBtn.addEventListener('click', toggleQuickGuide);
 
 
     // ============================================
@@ -226,6 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleFile(file) {
         if (file && file.type === 'application/pdf') {
+            lastUploadedFileName = file.name;
             fileNameDisplay.textContent = `📄 ${file.name}`;
             
             const reader = new FileReader();
@@ -266,6 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // This function is called by the onchange attribute in the HTML
     function handlePDFUpload(event) {
         if (event.target.files.length) {
+            lastUploadedFileName = event.target.files[0].name;
             handleFile(event.target.files[0]);
         }
     }
@@ -676,10 +860,29 @@ JSON OUTPUT FORMAT (strict):
                     questions = questions.slice(0, desiredCount);
                 }
                 localStorage.setItem('quizData', JSON.stringify(questions));
+                // Persist into collections with naming scheme
+                const collections = getQuizCollections();
+                const baseFileName = (lastUploadedFileName || 'Untitled').replace(/\.pdf$/i,'');
+                const existingForFile = collections.items.filter(i => i.fileBase === baseFileName);
+                const nextIndex = existingForFile.length + 1;
+                const title = `${baseFileName} Quiz ${nextIndex}`;
+                const id = `q_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+                collections.items.push({
+                    id,
+                    fileBase: baseFileName,
+                    fileName: lastUploadedFileName || 'Unknown',
+                    index: nextIndex,
+                    title,
+                    createdAt: Date.now(),
+                    questions
+                });
+                collections.activeQuizId = id;
+                saveQuizCollections(collections);
+                loadSavedQuizzesList();
                 progressDiv.style.display = 'none';
                 generateBtn.disabled = false;
                 generateBtn.style.opacity = '1';
-                showAiStatus(`✅ Generated all ${questions.length} questions successfully!`, 'success');
+                showAiStatus(`✅ Generated and saved ${questions.length} questions as "${title}"`, 'success');
             } else {
                 // Do NOT save partial set (user wants strict exact outcome)
                 progressDiv.style.display = 'none';
@@ -1118,4 +1321,7 @@ JSON OUTPUT FORMAT (strict):
     if (document.getElementById('quiz-view').classList.contains('active')) {
         initQuiz();
     }
+
+    // Always render saved quizzes section
+    loadSavedQuizzesList();
 });
