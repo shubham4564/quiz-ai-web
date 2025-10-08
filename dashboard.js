@@ -287,6 +287,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================
     // AI QUIZ GENERATION
     // ============================================
+    // Cache for discovered models during a session
+    let geminiModelCache = null;
+
+    async function fetchAvailableModels(apiKey) {
+        if (geminiModelCache) return geminiModelCache;
+        try {
+            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+            if (!resp.ok) throw new Error('List models HTTP ' + resp.status);
+            const data = await resp.json();
+            if (!data.models) throw new Error('No models field in response');
+            // Filter for text generation (generation_methods includes generateContent or undefined older spec)
+            const usable = data.models.filter(m => !m.disabled && (!m.generationMethods || m.generationMethods.includes('generateContent')));
+            // Rank: prefer pro, then flash, prefer higher version numbers
+            const scored = usable.map(m => {
+                const name = m.name || '';
+                let score = 0;
+                if (/pro/i.test(name)) score += 1000;
+                if (/flash/i.test(name)) score += 100;
+                const versionNum = (name.match(/(\d+(?:\.\d+)?)/) || [0,0])[1];
+                score += parseFloat(versionNum)||0;
+                return { model: name, meta: m, score };
+            }).sort((a,b)=> b.score - a.score);
+            geminiModelCache = scored.map(s => s.meta);
+            return geminiModelCache;
+        } catch (e) {
+            console.warn('Failed to dynamically fetch models:', e.message);
+            geminiModelCache = [];
+            return geminiModelCache;
+        }
+    }
+
     async function generateQuizFromPDF() {
         const apiKey = document.getElementById('gemini-api-key').value.trim();
         const numQuestions = document.getElementById('num-questions').value;
@@ -312,15 +343,18 @@ document.addEventListener('DOMContentLoaded', () => {
         progressText.textContent = 'Analyzing PDF content...';
         
         try {
-            // Prefer latest stable model name. Fallback sequence if selected model returns not found.
-            // Model list updated to supported public model IDs for v1beta generateContent
-            const candidateModels = [
-                // Ordered by quality first, then speed fallbacks
-                'models/gemini-2.5-pro',
-                'models/gemini-1.5-pro',
-                'models/gemini-1.5-flash',
-                'models/gemini-1.5-flash-8b'
-            ];
+            // Dynamically fetch models and build candidate list; fallback to static if empty
+            const dynamicModels = await fetchAvailableModels(apiKey);
+            let candidateModels = dynamicModels.map(m => m.name);
+            if (!candidateModels.length) {
+                candidateModels = [
+                    'models/gemini-2.5-pro',
+                    'models/gemini-1.5-pro',
+                    'models/gemini-1.5-flash',
+                    'models/gemini-1.5-flash-8b'
+                ];
+                showAiStatus('ℹ️ Using fallback model list (dynamic discovery failed).', 'warning');
+            }
             let lastModelError = null;
 
             // Build prompt once
@@ -328,7 +362,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const isRegeneration = !!localStorage.getItem('quizData');
             const prompt = `You are an AI quiz generator. ${isRegeneration ? 'IMPORTANT: Produce a completely new, non-overlapping set of questions different from any previously generated for this PDF.' : 'Generate an initial set of questions.'}
 Based on the following text from a PDF document, generate a JSON array of ${numQuestions} multiple-choice quiz questions.
-The questions should cover a range of difficulty levels and distinct topics included in the document. For each question, provide four answer options, with exactly one correct answer. Include a brief explanation for the correct answer and explanations for every option.
+The questions should cover distinct topics included in the document. For each question, provide four answer options, with exactly one correct answer. Include a brief explanation for the correct answer and explanations for every option.
 
 DOCUMENT TEXT:
 """
@@ -373,10 +407,17 @@ JSON OUTPUT FORMAT (strict):
                             contents: [{
                                 parts: [{ text: prompt }]
                             }],
-                            generationConfig: {
-                                temperature: 0.7,
-                                maxOutputTokens: 4096,
-                            }
+                            generationConfig: (function(){
+                                // Attempt to tailor to model token limits if present
+                                const meta = dynamicModels.find(m => m.name === model);
+                                const caps = meta?.inputTokenLimit || meta?.outputTokenLimit ? {
+                                    maxOutputTokens: Math.min(4096, meta.outputTokenLimit || 4096)
+                                } : { maxOutputTokens: 4096 };
+                                return {
+                                    temperature: 0.7,
+                                    ...caps
+                                };
+                            })()
                         })
                     });
 
@@ -571,7 +612,13 @@ JSON OUTPUT FORMAT (strict):
                     const supplementalPrompt = `You previously generated ${questions.length} quiz question objects (JSON) for a PDF but need ${remaining} MORE distinct ones.\n\nDO NOT repeat, paraphrase, or trivially alter these existing question stems:\n${priorList.map(q=>`- ${q}`).join('\n')}\n\nReturn ONLY a JSON array of EXACTLY ${remaining} NEW question objects using the SAME schema (no markdown fences, no commentary). Each must have 4 options, exactly one with \"correct\": true, and every option needs an explanation. If you cannot produce exactly ${remaining}, produce as many as possible but try very hard to reach the target.`;
 
                     try {
-                        const apiURLSupplement = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
+                        // Choose first flash/pro model from dynamic list for supplemental; else fallback
+                        let supplementalModel = 'models/gemini-1.5-pro';
+                        if (dynamicModels && dynamicModels.length) {
+                            const preferred = dynamicModels.find(m => /pro/i.test(m.name)) || dynamicModels.find(m=>/flash/i.test(m.name));
+                            if (preferred) supplementalModel = preferred.name;
+                        }
+                        const apiURLSupplement = `https://generativelanguage.googleapis.com/v1beta/${supplementalModel}:generateContent?key=${apiKey}`;
                         const resp = await fetch(apiURLSupplement, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
