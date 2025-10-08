@@ -8,7 +8,7 @@
 </head>
 <body>
     <!-- Theme Toggle Button -->
-    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+    <button class="theme-toggle" aria-label="Toggle theme">
         <span class="theme-icon" id="theme-icon">🌙</span>
         <span id="theme-text">Dark Mode</span>
     </button>
@@ -28,12 +28,12 @@
             
             <!-- Home View -->
             <div id="home-view" class="view active">
-                <div class="action-card" onclick="switchView('quiz')">
+                <div class="action-card" data-view="quiz">
                     <h3>📖 Take Quiz</h3>
                     <p>Start answering quiz questions and test your knowledge</p>
                 </div>
                 
-                <div class="action-card" onclick="switchView('admin')">
+                <div class="action-card" data-view="admin">
                     <h3>⚙️ Admin Panel</h3>
                     <p>Add or update quiz questions in bulk using JSON format</p>
                 </div>
@@ -42,51 +42,24 @@
                     <h4>ℹ️ Quick Guide</h4>
                     <p><strong>For Quiz Takers:</strong></p>
                     <ul>
-                        <li>Click "Take Quiz" to start answering questions</li>
-                        <li>Select your answer and click Submit</li>
-                        <li>View your final score at the end</li>
+                        <li>Click "Take Quiz" to start.</li>
+                        <li>Click on your chosen answer for instant feedback.</li>
+                        <li>Use the "Next Question" button to proceed.</li>
                     </ul>
                     
                     <p><strong>For Admins:</strong></p>
                     <ul>
-                        <li>Click "Admin Panel" to manage questions</li>
-                        <li>Follow the JSON format instructions carefully</li>
-                        <li>Use the provided example as a template</li>
+                        <li>Click "Admin Panel" to manage questions.</li>
+                        <li>Generate quizzes from PDFs or add them manually via JSON.</li>
+                        <li>Use the provided example as a template.</li>
                     </ul>
                 </div>
             </div>
             
             <!-- Quiz View -->
             <div id="quiz-view" class="view">
-                <!-- Progress bar -->
-                <div style="background: #0f172a; height: 8px; border-radius: 4px; margin-bottom: 1.5rem; overflow: hidden;">
-                    <div id="progress-bar" style="background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <span style="color: #94a3b8; font-size: 0.9rem; font-weight: 500;" id="progress-text">1 / 30</span>
-                </div>
                 <div id="quiz-container">
-                    <h2 id="question" style="color: #e2e8f0; font-size: 1.1rem; margin-bottom: 1.5rem;">Loading quiz...</h2>
-                    <ul style="list-style: none; padding: 0;">
-                        <li style="margin: 1rem 0;">
-                            <input type="radio" name="answer" id="a" class="answer">
-                            <label for="a" id="a_text">Answer A</label>
-                        </li>
-                        <li style="margin: 1rem 0;">
-                            <input type="radio" name="answer" id="b" class="answer">
-                            <label for="b" id="b_text">Answer B</label>
-                        </li>
-                        <li style="margin: 1rem 0;">
-                            <input type="radio" name="answer" id="c" class="answer">
-                            <label for="c" id="c_text">Answer C</label>
-                        </li>
-                        <li style="margin: 1rem 0;">
-                            <input type="radio" name="answer" id="d" class="answer">
-                            <label for="d" id="d_text">Answer D</label>
-                        </li>
-                    </ul>
-                    <button id="submit-quiz">Submit Answer</button>
-                    <button class="btn-secondary" onclick="switchView('home')">Back to Home</button>
+                    <!-- Quiz content will be dynamically loaded here -->
                 </div>
             </div>
             
@@ -105,14 +78,13 @@
                             id="admin-password" 
                             placeholder="Enter admin password"
                             style="width: 100%; padding: 1rem 1.5rem; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; font-family: 'Inter', sans-serif; transition: all 0.3s ease;"
-                            onkeypress="if(event.key === 'Enter') document.getElementById('login-btn').click()"
                         >
                         <div id="login-error" style="color: #dc3545; margin-top: 0.5rem; font-size: 0.9rem; display: none; font-weight: 500;"></div>
                     </div>
                     <button id="login-btn" style="margin-bottom: 0.5rem;">
                         🔓 Login
                     </button>
-                    <button class="btn-secondary" onclick="switchView('home')">
+                    <button class="btn-secondary" id="admin-back-to-home">
                         ← Back to Home
                     </button>
                     <div style="margin-top: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 12px; border-left: 4px solid #667eea;">
@@ -126,10 +98,7 @@
                 <div id="admin-content" class="admin-content" style="display: none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
                         <h2 style="color: var(--text-primary); margin: 0; font-weight: 600; font-size: 1.5rem;">Quiz Management</h2>
-                        <button 
-                            onclick="document.getElementById('admin-content').style.display='none'; document.getElementById('admin-login').style.display='block'; document.getElementById('admin-password').value='';"
-                            class="btn-danger"
-                        >
+                        <button id="logout-btn" class="btn-danger">
                             🚪 Logout
                         </button>
                     </div>
@@ -159,7 +128,7 @@
                                 <div id="drop-zone" class="drop-zone">
                                     <p>Drag & drop your PDF here, or click to select</p>
                                     <small>Max file size: 10MB</small>
-                                    <input type="file" id="pdf-upload" accept=".pdf" onchange="handlePDFUpload(event)" style="display: none;">
+                                    <input type="file" id="pdf-upload" accept=".pdf" style="display: none;">
                                 </div>
                                 <div id="file-name" style="text-align: center; margin-top: 0.5rem; font-weight: 500;"></div>
                             </div>
@@ -173,18 +142,20 @@
                         <div id="ai-progress" style="display: none;" class="form-group">
                             <div class="progress-box">
                                 <div class="loader"></div>
-                                <span id="progress-text">Generating...</span>
+                                <span id="progress-text"></span>
                             </div>
                         </div>
+
+                        <div id="ai-status-message" class="status-message" style="display: none;"></div>
                         
-                        <button id="generate-btn" class="btn-primary" onclick="generateQuizFromPDF()">
+                        <button id="generate-btn" class="btn-primary">
                             ✨ Generate Quiz with AI
                         </button>
                     </div>
                     
                     <!-- Manual Entry Section -->
                     <div id="manual-section" class="admin-section">
-                        <button id="toggle-instructions" class="btn-secondary" style="width: 100%; margin-bottom: 1rem;" onclick="toggleInstructions()">
+                        <button id="toggle-instructions" class="btn-secondary" style="width: 100%; margin-bottom: 1rem;">
                             <span id="instructions-icon">📖</span>
                             <span id="instructions-text">Show Instructions</span>
                         </button>
@@ -194,17 +165,16 @@
                             <p>Questions must be in the exact JSON format shown below.</p>
                             <ul>
                                 <li>Array of question objects: <code>[{...}, {...}]</code></li>
-                                <li>Each question needs: <code>"question"</code>, <code>"options"</code> (array of 4), <code>"hint"</code>, <code>"explanation"</code>.</li>
-                                <li>Each option needs: <code>"text"</code>, <code>"correct"</code> (boolean, only one <code>true</code>).</li>
+                                <li>Each question needs: <code>"question"</code>, <code>"options"</code> (array of 4), <code>"hint"</code>.</li>
+                                <li>Each option needs: <code>"text"</code>, <code>"correct"</code> (boolean, only one <code>true</code>), and <code>"explanation"</code>.</li>
                             </ul>
                             <pre>[
   {
     "question": "What is 2 + 2?",
     "hint": "Basic addition",
-    "explanation": "2+2=4",
     "options": [
-      {"text": "3", "correct": false},
-      {"text": "4", "correct": true},
+      {"text": "3", "correct": false, "explanation": "This is incorrect."},
+      {"text": "4", "correct": true, "explanation": "This is the correct answer."},
       ...
     ]
   }

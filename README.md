@@ -5,99 +5,112 @@ A modern, feature-rich quiz application with AI-powered quiz generation from PDF
 ## ✨ Features
 
 ### 🏠 Home Dashboard
-- Clean, modern interface with gradient backgrounds
-- Easy navigation between quiz and admin sections
-- Quick guide for users
+- Clean, modern interface with light and dark modes.
+- Easy navigation between quiz and admin sections.
+- A quick guide for new users.
 
 ### 📖 Quiz Taking
-- **Interactive Quiz Interface**
-  - Progress tracking (Question X/Total)
-  - 💡 **Hint System** - Get helpful hints without giving away the answer
-  - ✅/❌ **Instant Feedback** - Know if your answer is correct immediately
-  - 📝 **Explanations** - Learn why the correct answer is right
-  - Beautiful animations and transitions
-  
+- **Interactive Quiz Interface**:
+  - Progress tracking for questions.
+  - **Instant Feedback**: Click an answer to see if you're right or wrong immediately.
+  - **Detailed Explanations**: After answering, view explanations for all four options to understand the reasoning.
+  - **Hint System**: Get a helpful hint for each question.
+  - Smooth animations and a user-friendly design.
+
 ### ⚙️ Admin Panel (Password Protected)
 - **Password**: `admin123`
 - Two methods to create quizzes:
 
 #### 🤖 AI-Powered Generation
-- **Upload PDF documents**
-- **Automatic quiz generation** using Google Gemini AI
-- Generates 30 questions automatically with:
-  - Multiple choice options
-  - Helpful hints
-  - Detailed explanations
-  - Proper validation
+- **Upload PDF Documents**: Drag-and-drop or click to upload.
+- **Customizable Quiz Length**: Choose how many questions to generate.
+- **Automatic Quiz Generation**: Uses Google Gemini AI to create questions with:
+  - Four multiple-choice options.
+  - A correct answer marked.
+  - A helpful hint.
+  - A unique explanation for each of the four options.
+- **On-Page Status**: Get real-time feedback on the generation process without disruptive popups.
 
 #### ✍️ Manual JSON Entry
-- Add questions in bulk using JSON format
-- Collapsible instructions
-- Format validation
-- Example templates provided
+- Add questions in bulk using a specific JSON format.
+- Collapsible instructions with a clear format guide.
+- Real-time validation and status messages.
 
 ## 🚀 Getting Started
 
 ### 1. Setup
-1. Open `index.html` in your web browser
-2. No installation required!
+- Simply open `index.html` in your web browser. No installation is required!
 
 ### 2. Taking a Quiz
-1. Click **"Take Quiz"** from the home page
-2. Read each question carefully
-3. Click **"Show Hint"** if you need help (optional)
-4. Select your answer
-5. Click **"Submit Answer"**
-6. See instant feedback with explanation
-7. Click **"Next Question"** to continue
-8. View your final score and performance
+1. Click **"Take Quiz"** from the home page.
+2. Read the question and consider the options.
+3. Click on your chosen answer to see if it's correct.
+4. Review the explanations provided for all options.
+5. Click **"Next Question"** to continue.
+6. At the end, view your final score and have the option to generate more questions from the same PDF if one was used.
 
 ### 3. Admin Access - AI Generation
-
-1. Click **"Admin Panel"**
-2. Enter password: `admin123`
-3. Click **"AI Generate from PDF"** tab
-4. **Get your Gemini API Key**:
-   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-   - Create a new API key (free tier available)
-   - Copy the API key
-5. Paste your API key in the field
-6. Click **"Click to select PDF file"** to upload a PDF
-7. Click **"Generate 30 Quiz Questions with AI"**
-8. Wait for AI to process (15-30 seconds)
-9. Click **"Yes"** to take the quiz immediately!
+1. Navigate to the **"Admin Panel"** and enter the password: `admin123`.
+2. Select the **"AI Generation"** tab.
+3. **Get your Gemini API Key**:
+   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey).
+   - Create and copy your free API key.
+4. Paste your API key into the designated field.
+5. Upload a PDF document.
+6. Set the desired number of questions.
+7. Click **"Generate Quiz with AI"**.
+8. The quiz will be generated and saved. You can then take it from the "Take Quiz" view.
 
 ### 4. Admin Access - Manual Entry
-
-1. Click **"Admin Panel"**
-2. Enter password: `admin123`
-3. Click **"Manual JSON Entry"** tab
-4. Click **"Show Instructions"** for format details
-5. Paste your JSON array of questions
-6. Click **"Save Questions"**
+1. Go to the **"Admin Panel"** and enter the password: `admin123`.
+2. Select the **"Manual Entry"** tab.
+3. Click **"Show Instructions"** to see the required JSON format.
+4. Paste your JSON array into the text area.
+5. Click **"Save Questions"**.
 
 ## 📝 JSON Format
+
+The JSON must be an array of question objects. Each option within a question must have its own explanation.
 
 ```json
 [
   {
-    "question": "What is 2 + 2?",
-    "hint": "Think about basic addition",
-    "explanation": "2 + 2 equals 4 through simple addition",
+    "question": "What is the capital of France?",
+    "hint": "It's a famous European city known for art and romance.",
     "options": [
-      {"text": "3", "correct": false},
-      {"text": "4", "correct": true},
-      {"text": "5", "correct": false},
-      {"text": "6", "correct": false}
+      {
+        "text": "London",
+        "correct": false,
+        "explanation": "London is the capital of the United Kingdom, not France."
+      },
+      {
+        "text": "Paris",
+        "correct": true,
+        "explanation": "Correct! Paris is the capital and most populous city of France."
+      },
+      {
+        "text": "Berlin",
+        "correct": false,
+        "explanation": "Berlin is the capital of Germany."
+      },
+      {
+        "text": "Madrid",
+        "correct": false,
+        "explanation": "Madrid is the capital of Spain."
+      }
     ]
   }
 ]
 ```
 
 ### Required Fields:
-- `question`: String - The question text
-- `options`: Array of 4 objects - The answer options
-  - `text`: String - Option text
+- `question` (string): The question text.
+- `hint` (string): A hint for the user.
+- `options` (array of 4 objects): The answer choices.
+  - `text` (string): The option's text.
+  - `correct` (boolean): `true` for the correct answer, `false` otherwise.
+  - `explanation` (string): An explanation specific to that option.
+
   - `correct`: Boolean - Only ONE should be true
 - `hint`: String (optional) - A helpful hint
 - `explanation`: String (optional) - Explanation of the correct answer
