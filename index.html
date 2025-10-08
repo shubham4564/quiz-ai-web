@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+        <span class="theme-icon" id="theme-icon">🌙</span>
+        <span id="theme-text">Dark Mode</span>
+    </button>
+    
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>📝 Quiz Dashboard</h1>
+            <p style="margin: 0.5rem 0 0 0; opacity: 0.95;">Manage and Take Your Quizzes</p>
+        </div>
+        
+        <div class="dashboard-content">
+            <div class="mode-selector">
+                <button class="mode-btn active" data-view="home">🏠 Home</button>
+                <button class="mode-btn" data-view="quiz">📖 Take Quiz</button>
+                <button class="mode-btn" data-view="admin">⚙️ Admin Panel</button>
+            </div>
+            
+            <!-- Home View -->
+            <div id="home-view" class="view active">
+                <div class="action-card" onclick="switchView('quiz')">
+                    <h3>📖 Take Quiz</h3>
+                    <p>Start answering quiz questions and test your knowledge</p>
+                </div>
+                
+                <div class="action-card" onclick="switchView('admin')">
+                    <h3>⚙️ Admin Panel</h3>
+                    <p>Add or update quiz questions in bulk using JSON format</p>
+                </div>
+                
+                <div class="instructions">
+                    <h4>ℹ️ Quick Guide</h4>
+                    <p><strong>For Quiz Takers:</strong></p>
+                    <ul>
+                        <li>Click "Take Quiz" to start answering questions</li>
+                        <li>Select your answer and click Submit</li>
+                        <li>View your final score at the end</li>
+                    </ul>
+                    
+                    <p><strong>For Admins:</strong></p>
+                    <ul>
+                        <li>Click "Admin Panel" to manage questions</li>
+                        <li>Follow the JSON format instructions carefully</li>
+                        <li>Use the provided example as a template</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Quiz View -->
+            <div id="quiz-view" class="view">
+                <!-- Progress bar -->
+                <div style="background: #0f172a; height: 8px; border-radius: 4px; margin-bottom: 1.5rem; overflow: hidden;">
+                    <div id="progress-bar" style="background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 100%); height: 100%; width: 0%; transition: width 0.3s ease;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <span style="color: #94a3b8; font-size: 0.9rem; font-weight: 500;" id="progress-text">1 / 30</span>
+                </div>
+                <div id="quiz-container">
+                    <h2 id="question" style="color: #e2e8f0; font-size: 1.1rem; margin-bottom: 1.5rem;">Loading quiz...</h2>
+                    <ul style="list-style: none; padding: 0;">
+                        <li style="margin: 1rem 0;">
+                            <input type="radio" name="answer" id="a" class="answer">
+                            <label for="a" id="a_text">Answer A</label>
+                        </li>
+                        <li style="margin: 1rem 0;">
+                            <input type="radio" name="answer" id="b" class="answer">
+                            <label for="b" id="b_text">Answer B</label>
+                        </li>
+                        <li style="margin: 1rem 0;">
+                            <input type="radio" name="answer" id="c" class="answer">
+                            <label for="c" id="c_text">Answer C</label>
+                        </li>
+                        <li style="margin: 1rem 0;">
+                            <input type="radio" name="answer" id="d" class="answer">
+                            <label for="d" id="d_text">Answer D</label>
+                        </li>
+                    </ul>
+                    <button id="submit-quiz">Submit Answer</button>
+                    <button class="btn-secondary" onclick="switchView('home')">Back to Home</button>
+                </div>
+            </div>
+            
+            <!-- Admin View -->
+            <div id="admin-view" class="view">
+                <!-- Password Protection -->
+                <div id="admin-login" class="admin-login">
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">🔐</div>
+                        <h2 style="color: #2d3748; margin: 0; font-size: 1.8rem; font-weight: 700;">Admin Access</h2>
+                        <p style="color: #6c757d; margin: 0.5rem 0 0 0;">Enter password to continue</p>
+                    </div>
+                    <div style="margin-bottom: 1.5rem;">
+                        <input 
+                            type="password" 
+                            id="admin-password" 
+                            placeholder="Enter admin password"
+                            style="width: 100%; padding: 1rem 1.5rem; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; font-family: 'Inter', sans-serif; transition: all 0.3s ease;"
+                            onkeypress="if(event.key === 'Enter') document.getElementById('login-btn').click()"
+                        >
+                        <div id="login-error" style="color: #dc3545; margin-top: 0.5rem; font-size: 0.9rem; display: none; font-weight: 500;"></div>
+                    </div>
+                    <button id="login-btn" style="margin-bottom: 0.5rem;">
+                        🔓 Login
+                    </button>
+                    <button class="btn-secondary" onclick="switchView('home')">
+                        ← Back to Home
+                    </button>
+                    <div style="margin-top: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 12px; border-left: 4px solid #667eea;">
+                        <p style="margin: 0; font-size: 0.9rem; color: #6c757d;">
+                            <strong style="color: #667eea;">Demo Password:</strong> <code style="background: white; padding: 4px 8px; border-radius: 6px; color: #d63384; font-weight: 600;">admin123</code>
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Admin Panel Content (Hidden until logged in) -->
+                <div id="admin-content" class="admin-content" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+                        <h2 style="color: var(--text-primary); margin: 0; font-weight: 600; font-size: 1.5rem;">Quiz Management</h2>
+                        <button 
+                            onclick="document.getElementById('admin-content').style.display='none'; document.getElementById('admin-login').style.display='block'; document.getElementById('admin-password').value='';"
+                            class="btn-danger"
+                        >
+                            🚪 Logout
+                        </button>
+                    </div>
+
+                    <!-- Tab Navigation -->
+                    <div class="admin-tabs">
+                        <button class="admin-tab-btn active" data-target="ai-section">🤖 AI Generation</button>
+                        <button class="admin-tab-btn" data-target="manual-section">✍️ Manual Entry</button>
+                    </div>
+
+                    <!-- AI Generation Section -->
+                    <div id="ai-section" class="admin-section active">
+                        <h3 class="section-title">AI-Powered Quiz Generation</h3>
+                        <p class="section-description">
+                            Upload a PDF document and let AI generate quiz questions automatically.
+                        </p>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="gemini-api-key">🔑 Google Gemini API Key</label>
+                                <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API key">
+                                <small>Get your key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="pdf-upload">📄 Upload PDF Document</label>
+                                <div id="drop-zone" class="drop-zone">
+                                    <p>Drag & drop your PDF here, or click to select</p>
+                                    <small>Max file size: 10MB</small>
+                                    <input type="file" id="pdf-upload" accept=".pdf" onchange="handlePDFUpload(event)" style="display: none;">
+                                </div>
+                                <div id="file-name" style="text-align: center; margin-top: 0.5rem; font-weight: 500;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="num-questions">Number of Questions to Generate</label>
+                            <input type="number" id="num-questions" value="10" min="1" max="50">
+                        </div>
+
+                        <div id="ai-progress" style="display: none;" class="form-group">
+                            <div class="progress-box">
+                                <div class="loader"></div>
+                                <span id="progress-text">Generating...</span>
+                            </div>
+                        </div>
+                        
+                        <button id="generate-btn" class="btn-primary" onclick="generateQuizFromPDF()">
+                            ✨ Generate Quiz with AI
+                        </button>
+                    </div>
+                    
+                    <!-- Manual Entry Section -->
+                    <div id="manual-section" class="admin-section">
+                        <button id="toggle-instructions" class="btn-secondary" style="width: 100%; margin-bottom: 1rem;" onclick="toggleInstructions()">
+                            <span id="instructions-icon">📖</span>
+                            <span id="instructions-text">Show Instructions</span>
+                        </button>
+                        
+                        <div id="instructions-panel" class="instructions" style="display: none; margin-bottom: 1.5rem;">
+                            <h4>📋 JSON Format Instructions</h4>
+                            <p>Questions must be in the exact JSON format shown below.</p>
+                            <ul>
+                                <li>Array of question objects: <code>[{...}, {...}]</code></li>
+                                <li>Each question needs: <code>"question"</code>, <code>"options"</code> (array of 4), <code>"hint"</code>, <code>"explanation"</code>.</li>
+                                <li>Each option needs: <code>"text"</code>, <code>"correct"</code> (boolean, only one <code>true</code>).</li>
+                            </ul>
+                            <pre>[
+  {
+    "question": "What is 2 + 2?",
+    "hint": "Basic addition",
+    "explanation": "2+2=4",
+    "options": [
+      {"text": "3", "correct": false},
+      {"text": "4", "correct": true},
+      ...
+    ]
+  }
+]</pre>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="bulk-questions">Paste your JSON array below:</label>
+                            <textarea id="bulk-questions" rows="12" placeholder="Paste JSON here..."></textarea>
+                        </div>
+                        
+                        <div id="status-message" class="status-message" style="display: none;"></div>
+                        
+                        <button id="submit-questions" class="btn-primary">💾 Save Questions</button>
+                    </div>
+                    
+                    <div class="danger-zone">
+                        <h4 class="section-title">⚠️ Danger Zone</h4>
+                        <p class="section-description">These actions are permanent and cannot be undone.</p>
+                        <button id="clear-quiz-btn" class="btn-danger">
+                            🗑️ Clear All Quiz Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="dashboard.js"></script>
+</body>
+</html>
