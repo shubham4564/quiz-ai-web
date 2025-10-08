@@ -63,44 +63,12 @@
                 </div>
             </div>
             
-            <!-- Admin View -->
+            <!-- Admin View (Password removed) -->
             <div id="admin-view" class="view">
-                <!-- Password Protection -->
-                <div id="admin-login" class="admin-login">
-                    <div style="text-align: center; margin-bottom: 2rem;">
-                        <div style="font-size: 3rem; margin-bottom: 1rem;">🔐</div>
-                        <h2 style="color: #2d3748; margin: 0; font-size: 1.8rem; font-weight: 700;">Admin Access</h2>
-                        <p style="color: #6c757d; margin: 0.5rem 0 0 0;">Enter password to continue</p>
-                    </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <input 
-                            type="password" 
-                            id="admin-password" 
-                            placeholder="Enter admin password"
-                            style="width: 100%; padding: 1rem 1.5rem; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; font-family: 'Inter', sans-serif; transition: all 0.3s ease;"
-                        >
-                        <div id="login-error" style="color: #dc3545; margin-top: 0.5rem; font-size: 0.9rem; display: none; font-weight: 500;"></div>
-                    </div>
-                    <button id="login-btn" style="margin-bottom: 0.5rem;">
-                        🔓 Login
-                    </button>
-                    <button class="btn-secondary" id="admin-back-to-home">
-                        ← Back to Home
-                    </button>
-                    <div style="margin-top: 2rem; padding: 1rem; background: #f8f9fa; border-radius: 12px; border-left: 4px solid #667eea;">
-                        <p style="margin: 0; font-size: 0.9rem; color: #6c757d;">
-                            <strong style="color: #667eea;">Demo Password:</strong> <code style="background: white; padding: 4px 8px; border-radius: 6px; color: #d63384; font-weight: 600;">admin123</code>
-                        </p>
-                    </div>
-                </div>
-                
-                <!-- Admin Panel Content (Hidden until logged in) -->
-                <div id="admin-content" class="admin-content" style="display: none;">
+                <div id="admin-content" class="admin-content" style="display: block;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
                         <h2 style="color: var(--text-primary); margin: 0; font-weight: 600; font-size: 1.5rem;">Quiz Management</h2>
-                        <button id="logout-btn" class="btn-danger">
-                            🚪 Logout
-                        </button>
+                        <button id="admin-back-to-home" class="btn-secondary">← Back to Home</button>
                     </div>
 
                     <!-- Tab Navigation -->

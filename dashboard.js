@@ -49,32 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
 
     // ============================================
-    // ADMIN STATE & HELPERS
+    // ADMIN (Password removed)
     // ============================================
-    const adminLoginSection = document.getElementById('admin-login');
     const adminContentSection = document.getElementById('admin-content');
-    const adminPasswordInput = document.getElementById('admin-password');
-    const loginError = document.getElementById('login-error');
-    let isAdminAuthenticated = false;
-
-    function setAdminAuthState(authenticated) {
-        isAdminAuthenticated = authenticated;
-
-        if (!adminLoginSection || !adminContentSection) return;
-
-        if (authenticated) {
-            adminLoginSection.style.display = 'none';
+    function ensureAdminVisible() {
+        if (adminContentSection) {
             adminContentSection.style.display = 'block';
-            if (adminPasswordInput) adminPasswordInput.value = '';
-            if (loginError) loginError.style.display = 'none';
-        } else {
-            adminLoginSection.style.display = 'block';
-            adminContentSection.style.display = 'none';
-            if (adminPasswordInput) {
-                adminPasswordInput.value = '';
-                adminPasswordInput.focus();
-            }
-            if (loginError) loginError.style.display = 'none';
         }
     }
 
@@ -95,13 +75,9 @@ document.addEventListener('DOMContentLoaded', () => {
             initQuiz();
         }
         
-        // If switching to admin view, ensure login screen is shown
+        // If switching to admin view just show content directly
         if (viewName === 'admin') {
-            if (isAdminAuthenticated) {
-                setAdminAuthState(true);
-            } else {
-                setAdminAuthState(false);
-            }
+            ensureAdminVisible();
         }
     }
 
@@ -123,47 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ============================================
-    // ADMIN PASSWORD PROTECTION
-    // ============================================
-    const ADMIN_PASSWORD = 'admin123'; // In production, this should be server-side
-
-    function attemptAdminLogin() {
-        if (!adminPasswordInput) return;
-
-        if (adminPasswordInput.value.trim() === ADMIN_PASSWORD) {
-            setAdminAuthState(true);
-        } else {
-            setAdminAuthState(false);
-            if (loginError) {
-                loginError.textContent = '❌ Incorrect password. Please try again.';
-                loginError.style.display = 'block';
-            }
-        }
-    }
-
-    const loginBtn = document.getElementById('login-btn');
-    if (loginBtn) {
-        loginBtn.addEventListener('click', attemptAdminLogin);
-    }
-
-    if (adminPasswordInput) {
-        adminPasswordInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                attemptAdminLogin();
-            }
-        });
-    }
-
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            setAdminAuthState(false);
-            switchView('home');
-        });
-    }
-
+    // Remove obsolete password/login logic; only provide back-to-home navigation
     const adminBackToHomeBtn = document.getElementById('admin-back-to-home');
     if (adminBackToHomeBtn) {
         adminBackToHomeBtn.addEventListener('click', () => switchView('home'));
