@@ -23,7 +23,7 @@
             <div class="mode-selector">
                 <button class="mode-btn active" data-view="home">🏠 Home</button>
                 <button class="mode-btn" data-view="quiz">📖 Take Quiz</button>
-                <button class="mode-btn" data-view="admin">⚙️ Admin Panel</button>
+                <button class="mode-btn" data-view="admin">⚙️ Generate Your Quiz</button>
             </div>
             
             <!-- Home View -->
@@ -41,22 +41,27 @@
                         <li>Click on your chosen answer for instant feedback.</li>
                         <li>Use the "Next Question" button to proceed.</li>
                     </ul>
-                    <p><strong>For Admins:</strong></p>
+                    <p style="margin-top:0.75rem;"><strong>First Time Here?</strong></p>
                     <ul>
-                        <li>Click "Admin Panel" to manage questions.</li>
-                        <li>Generate quizzes from PDFs or add them manually via JSON.</li>
-                        <li>Use the provided example as a template.</li>
+                        <li><strong>Start at "Generate Your Quiz"</strong> to create questions from a PDF or add them manually.</li>
+                        <li>You can regenerate multiple distinct quiz sets from the same PDF.</li>
+                        <li>Saved quizzes appear below for quick reuse.</li>
                     </ul>
+                    <p><strong>Advanced (Manual JSON Entry):</strong></p>
+                    <ul>
+                        <li>Switch to Manual Entry tab inside the generator to paste custom JSON.</li>
+                        <li>Use the inline example as a template; structure is strictly validated.</li>
+                    </ul>
+                </div>
+                <div class="action-card" style="border:2px solid var(--accent-primary); background: var(--bg-tertiary);" data-view="admin">
+                    <h3>🚀 Start Here: Generate Your Quiz</h3>
+                    <p>Create your first quiz by uploading a PDF or adding questions manually.</p>
                 </div>
                 <div class="action-card" data-view="quiz">
                     <h3>📖 Take Quiz</h3>
                     <p>Start answering quiz questions and test your knowledge</p>
                 </div>
                 
-                <div class="action-card" data-view="admin">
-                    <h3>⚙️ Admin Panel</h3>
-                    <p>Add or update quiz questions in bulk using JSON format</p>
-                </div>
                 
                 <div class="saved-quizzes-section" id="saved-quizzes-section">
                     <h4 style="margin-top:1.5rem; margin-bottom:0.75rem;">💾 Saved Quizzes</h4>
@@ -78,14 +83,14 @@
             <div id="admin-view" class="view">
                 <div id="admin-content" class="admin-content" style="display: block;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
-                        <h2 style="color: var(--text-primary); margin: 0; font-weight: 600; font-size: 1.5rem;">Quiz Management</h2>
+                        <h2 style="color: var(--text-primary); margin: 0; font-weight: 600; font-size: 1.5rem;">Generate Your Quiz</h2>
                         <button id="admin-back-to-home" class="btn-secondary">← Back to Home</button>
                     </div>
 
                     <!-- Tab Navigation -->
                     <div class="admin-tabs">
-                        <button class="admin-tab-btn active" data-target="ai-section">🤖 AI Generation</button>
-                        <button class="admin-tab-btn" data-target="manual-section">✍️ Manual Entry</button>
+                        <button class="admin-tab-btn active" data-target="ai-section">🤖 Generate from PDF (AI)</button>
+                        <button class="admin-tab-btn" data-target="manual-section">✍️ Manual Entry (JSON)</button>
                     </div>
 
                     <!-- AI Generation Section -->
@@ -139,26 +144,52 @@
                             <span id="instructions-text">Show Instructions</span>
                         </button>
                         
-                        <div id="instructions-panel" class="instructions" style="display: none; margin-bottom: 1.5rem;">
-                            <h4>📋 JSON Format Instructions</h4>
-                            <p>Questions must be in the exact JSON format shown below.</p>
-                            <ul>
-                                <li>Array of question objects: <code>[{...}, {...}]</code></li>
-                                <li>Each question needs: <code>"question"</code>, <code>"options"</code> (array of 4), <code>"hint"</code>.</li>
-                                <li>Each option needs: <code>"text"</code>, <code>"correct"</code> (boolean, only one <code>true</code>), and <code>"explanation"</code>.</li>
-                            </ul>
-                            <pre>[
-  {
-    "question": "What is 2 + 2?",
-    "hint": "Basic addition",
-    "options": [
-      {"text": "3", "correct": false, "explanation": "This is incorrect."},
-      {"text": "4", "correct": true, "explanation": "This is the correct answer."},
-      ...
-    ]
-  }
+                                                <div id="instructions-panel" class="instructions" style="display: none; margin-bottom: 1.5rem;">
+                                                        <h4>📋 JSON Manual Entry Guide</h4>
+                                                        <p>Paste a JSON <strong>array</strong> of question objects. The app validates structure before saving. No partial saves on error.</p>
+                                                        <ul style="margin-top:0.75rem;">
+                                                                <li><strong>Top Level:</strong> Must be <code>[ ... ]</code> (an array). No trailing commas.</li>
+                                                                <li><strong>Each Object Fields:</strong> <code>question</code> (string), <code>hint</code> (string, optional but recommended), <code>options</code> (array length = 4).</li>
+                                                                <li><strong>Each Option:</strong> <code>text</code> (string), <code>correct</code> (boolean), <code>explanation</code> (string).</li>
+                                                                <li><strong>Exactly 1</strong> option per question must have <code>"correct": true</code>.</li>
+                                                                <li>Keep explanations concise; they appear after answering.</li>
+                                                                <li>No extra fields are required; additional custom fields will be ignored.</li>
+                                                        </ul>
+                                                        <p style="margin-top:0.75rem; font-weight:600;">✅ Full Working Example (copy & modify):</p>
+                                                        <pre>[
+    {
+        "question": "Which protocol operates at the Transport Layer and provides unreliable, connectionless service?",
+        "hint": "Think lightweight and no handshake.",
+        "options": [
+            { "text": "TCP", "correct": false, "explanation": "TCP is connection-oriented and reliable." },
+            { "text": "UDP", "correct": true, "explanation": "UDP is connectionless and does not guarantee delivery." },
+            { "text": "SMTP", "correct": false, "explanation": "SMTP is an application layer email protocol." },
+            { "text": "IPSec", "correct": false, "explanation": "IPSec secures IP traffic; it's not the transport protocol described." }
+        ]
+    },
+    {
+        "question": "What is the PRIMARY benefit of using hashing when storing user passwords?",
+        "hint": "Mitigates impact of database disclosure.",
+        "options": [
+            { "text": "It allows instant password recovery", "correct": false, "explanation": "Hashes are one-way; you can't recover the original password." },
+            { "text": "It prevents users from choosing weak passwords", "correct": false, "explanation": "Hashing doesn't enforce password strength; policies do." },
+            { "text": "It protects original passwords if the DB is leaked", "correct": true, "explanation": "Proper hashing (with salt) makes reversing difficult." },
+            { "text": "It speeds up login performance", "correct": false, "explanation": "Hashing adds computation; performance is not the main goal." }
+        ]
+    },
+    {
+        "question": "In symmetric encryption, what is a major operational challenge?",
+        "hint": "Consider key lifecycle.",
+        "options": [
+            { "text": "Slow performance at scale", "correct": false, "explanation": "Symmetric ciphers are generally fast." },
+            { "text": "Key distribution to all parties", "correct": true, "explanation": "Securely sharing the same secret key is difficult." },
+            { "text": "Inability to encrypt large data", "correct": false, "explanation": "Symmetric encryption handles large data efficiently." },
+            { "text": "Mathematical insecurity of algorithms", "correct": false, "explanation": "Modern ciphers (AES) are considered strong when used properly." }
+        ]
+    }
 ]</pre>
-                        </div>
+                                                        <p style="margin-top:0.75rem; font-size:0.85rem; color: var(--text-secondary);">Tip: Validate your JSON with any online linter if you hit errors. Common mistakes: missing commas, trailing commas, or using single quotes instead of double quotes.</p>
+                                                </div>
                         
                         <div class="form-group">
                             <label for="bulk-questions">Paste your JSON array below:</label>
