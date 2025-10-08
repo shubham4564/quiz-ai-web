@@ -7,7 +7,8 @@ A modern, feature-rich quiz application with AI-powered quiz generation from PDF
 ### 🏠 Home Dashboard
 - Clean, modern interface with light and dark modes.
 - Easy navigation between quiz and admin sections.
-- A quick guide for new users.
+- Collapsible “Quick Guide” panel (Show / Hide) for instant onboarding.
+- Versioned list of previously generated quizzes with open & delete actions.
 
 ### 📖 Quiz Taking
 - **Interactive Quiz Interface**:
@@ -23,7 +24,7 @@ No password is required in this demo build (previous password gating was removed
 #### 🤖 AI-Powered Generation
 - **Upload PDF Documents**: Drag-and-drop or click to upload.
 - **Customizable Quiz Length**: Choose how many questions to generate.
-- **Automatic Quiz Generation**: Uses Google Gemini AI to create questions with:
+- **Automatic Quiz Generation**: Uses Google Gemini AI (dynamic model discovery prioritizing current Pro / Flash models; falls back gracefully) to create questions with:
   - Four multiple-choice options.
   - A correct answer marked.
   - A helpful hint.
@@ -31,6 +32,7 @@ No password is required in this demo build (previous password gating was removed
 - **On-Page Status**: Get real-time feedback on the generation process without disruptive popups.
 - **Persistent Saved Quizzes**: Each successful generation from a PDF is stored and named automatically: `<FileBaseName> Quiz N` (e.g., `Lecture1 Quiz 1`, then `Lecture1 Quiz 2`). These appear under "Saved Quizzes" on the Home screen.
 - **Per-Quiz Management**: Click a saved quiz to open that exact version; delete individual quizzes without affecting others.
+- **Strict Completeness**: Partial generations are never saved (ensures consistency & comparability between versions).
 
 #### ✍️ Manual JSON Entry
 - Add questions in bulk using a specific JSON format.
@@ -130,13 +132,35 @@ The JSON must be an array of question objects. Each option within a question mus
 - One-sentence explanation of why the answer is correct
 
 ### AI Generation
-- Uses Google Gemini API with dynamic model discovery (prefers current Pro / Flash variants; falls back to stable known list if discovery fails)
+- Uses Google Gemini API with dynamic model discovery (prefers current Pro / Flash variants; falls back to a stable known list if discovery fails)
 - Analyzes PDF content intelligently
 - Generates diverse, non-overlapping questions (regeneration enforces novelty)
 - Automatically adds hints and explanations (or fills defaults)
 - Robust JSON handling: repairs malformed output, salvages valid objects, and supplements missing questions
 - Attempts supplemental batches until the exact requested count is reached; does not save partial sets
 - Automatically archives the successful set into a versioned list tied to the original PDF filename for iterative quiz builds.
+
+### Saved Quizzes
+- Each AI (or migrated legacy) quiz is stored as an immutable snapshot.
+- Naming: Base name comes from uploaded PDF filename (without extension) plus incrementing index.
+- Opening a saved quiz sets it as the active quiz (and loads into the quiz view).
+- Deleting affects only that snapshot; others remain intact.
+- Clearing all quiz data (Danger Zone) also clears the entire saved collection (undo available for the current session).
+
+### Quick Guide Toggle
+- Located at the top of the Home view.
+- Collapsible button shows/hides onboarding instructions.
+- Independent from the Manual Entry instructions toggle.
+
+### Data Persistence
+- `quizCollections`: Stores array of quiz snapshot metadata + questions + activeQuizId.
+- `quizData`: Current quiz questions loaded for play (mirrors active snapshot for compatibility).
+- `theme`: Stores selected theme (light / dark).
+- All data lives solely in `localStorage`; clearing browser data wipes it.
+
+### Footer Credit
+- A subtle fixed footer credit: “Made by SHjoshi”.
+- Non-interactive (can be turned into a link if needed).
 
 ### Score Display
 - Shows correct/incorrect count
@@ -207,6 +231,15 @@ The JSON must be an array of question objects. Each option within a question mus
 - Ensure at least one full quiz was generated (partial sets are discarded)
 - Confirm browser localStorage is enabled (uses key `quizCollections`)
 - Using incognito / clearing site data will remove saved entries
+
+## 🤲 Acknowledgements
+
+- Google Gemini API for content generation
+- PDF.js for client-side PDF parsing
+
+## 🙌 Credits
+
+Made by **SHjoshi**
 
 ## 📄 License
 
