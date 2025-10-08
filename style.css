@@ -678,6 +678,67 @@ button:hover {
     .dashboard-content {
         padding: 1rem;
     }
+    .dashboard-container {
+        margin: 3.5rem auto 2rem;
+        width: 100%;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .dashboard-header {
+        padding: 1.1rem 1rem 1.25rem;
+    }
+    .dashboard-header h1 {
+        font-size: 1.05rem;
+    }
+    .mode-selector {
+        flex-direction: column;
+        gap: 0.4rem;
+    }
+    .mode-btn { font-size: 0.85rem; padding: 0.65rem 0.75rem; }
+    .action-card { padding: 1.25rem 1rem; }
+    .action-card h3 { font-size: 1.05rem; }
+    .action-card p { font-size: 0.8rem; }
+    #quiz-container h2 { font-size: 1rem; }
+    #quiz-container li { padding: 0.85rem 0.9rem; }
+    #quiz-container li label { font-size: 0.8rem; }
+    .question-nav .qn-btn { min-width: 28px; font-size: 0.55rem; padding: 0.35rem 0.5rem; }
+    .form-group label { font-size: 0.8rem; }
+    .form-group input, .form-group textarea { font-size: 0.8rem; padding: 0.65rem 0.75rem; }
+    button { font-size: 0.8rem; padding: 0.6rem 0.9rem; }
+    #generate-btn, #submit-questions { font-size: 0.85rem; padding: 0.75rem; }
+    .instructions { padding: 1.1rem 1rem; }
+    .instructions h4 { font-size: 1rem; }
+    .instructions p, .instructions ul { font-size: 0.75rem; }
+    .instructions pre { font-size: 0.7rem; }
+    .theme-toggle { top: 0.6rem; right: 0.6rem; padding: 0.5rem 0.7rem; }
+    .theme-toggle span { font-size: 0.75rem; }
+    body { padding: 0.75rem 0.5rem 3.5rem; }
+}
+
+@media (max-width: 520px) {
+    .question-nav { gap: 0.3rem; }
+    .dashboard-header h1 { font-size: 0.95rem; }
+    .action-card { padding: 1rem 0.85rem; }
+    .action-card h3 { font-size: 0.95rem; }
+    .action-card p { font-size: 0.72rem; }
+    .mode-btn { font-size: 0.8rem; }
+    #quiz-container h2 { font-size: 0.95rem; }
+    .question-nav .qn-btn { min-width: 26px; font-size: 0.5rem; }
+    .hint-btn { font-size: 0.65rem; margin-left: 0.5rem; }
+    .status-message { font-size: 0.75rem; }
+    .form-group small { font-size: 0.65rem; }
+    .site-footer { font-size: 0.55rem; }
+}
+
+@media (max-width: 380px) {
+    .dashboard-header h1 { font-size: 0.85rem; }
+    .mode-btn { font-size: 0.7rem; }
+    .action-card h3 { font-size: 0.85rem; }
+    .action-card p { font-size: 0.68rem; }
+    #quiz-container li { padding: 0.7rem 0.75rem; }
+    .question-nav .qn-btn { min-width: 24px; font-size: 0.45rem; }
+    button { font-size: 0.7rem; }
+    .instructions pre { font-size: 0.6rem; }
 }
 
 .status-message {
