@@ -17,9 +17,8 @@ A modern, feature-rich quiz application with AI-powered quiz generation from PDF
   - **Hint System**: Get a helpful hint for each question.
   - Smooth animations and a user-friendly design.
 
-### ⚙️ Admin Panel (Password Protected)
-- **Password**: `admin123`
-- Two methods to create quizzes:
+### ⚙️ Admin Panel (Open Access in Demo)
+No password is required in this demo build (previous password gating was removed for simplicity). Two methods to create quizzes:
 
 #### 🤖 AI-Powered Generation
 - **Upload PDF Documents**: Drag-and-drop or click to upload.
@@ -49,8 +48,8 @@ A modern, feature-rich quiz application with AI-powered quiz generation from PDF
 5. Click **"Next Question"** to continue.
 6. At the end, view your final score and have the option to generate more questions from the same PDF if one was used.
 
-### 3. Admin Access - AI Generation
-1. Navigate to the **"Admin Panel"** and enter the password: `admin123`.
+### 3. Admin - AI Generation
+1. Navigate to the **"Admin Panel"** (no password required in this demo).
 2. Select the **"AI Generation"** tab.
 3. **Get your Gemini API Key**:
    - Visit [Google AI Studio](https://makersuite.google.com/app/apikey).
@@ -61,8 +60,8 @@ A modern, feature-rich quiz application with AI-powered quiz generation from PDF
 7. Click **"Generate Quiz with AI"**.
 8. The quiz will be generated and saved. You can then take it from the "Take Quiz" view.
 
-### 4. Admin Access - Manual Entry
-1. Go to the **"Admin Panel"** and enter the password: `admin123`.
+### 4. Admin - Manual Entry
+1. Go to the **"Admin Panel"** (no password required).
 2. Select the **"Manual Entry"** tab.
 3. Click **"Show Instructions"** to see the required JSON format.
 4. Paste your JSON array into the text area.
@@ -129,11 +128,12 @@ The JSON must be an array of question objects. Each option within a question mus
 - One-sentence explanation of why the answer is correct
 
 ### AI Generation
-- Uses Google Gemini 2.0 Flash Exp model
+- Uses Google Gemini API (multi-model fallback sequence: 2.5 Pro → 1.5 Pro → 1.5 Flash → 1.5 Flash 8B)
 - Analyzes PDF content intelligently
-- Generates diverse questions covering different topics
-- Automatically adds hints and explanations
-- Validates all generated questions
+- Generates diverse, non-overlapping questions (regeneration enforces novelty)
+- Automatically adds hints and explanations (or fills defaults)
+- Robust JSON handling: repairs malformed output, salvages valid objects, and supplements missing questions
+- Attempts supplemental batches until the exact requested count is reached; does not save partial sets
 
 ### Score Display
 - Shows correct/incorrect count
@@ -146,10 +146,9 @@ The JSON must be an array of question objects. Each option within a question mus
 
 ## 🔒 Security Notes
 
-- Admin password is `admin123` (for demo purposes)
-- In production, use server-side authentication
-- API keys are stored locally in browser only
-- No data is sent to external servers (except Gemini API)
+- Demo build: admin panel is open (no password). In production add real auth.
+- API keys are kept client-side only for requests directly to Gemini.
+- No server stores your data; quiz data lives in `localStorage`.
 
 ## 💡 Tips
 
@@ -192,10 +191,10 @@ The JSON must be an array of question objects. Each option within a question mus
 - Try a different PDF if extraction fails
 
 ### AI Generation Issues
-- Verify API key is correct
-- Check internet connection
+- Verify API key is correct / not expired
+- Check network connectivity
 - Ensure you have API quota remaining
-- Try with a smaller PDF
+- If you get fewer questions than requested, the app now tries multiple supplemental batches. If it still fails, try: (1) requesting fewer questions, (2) providing a richer / larger PDF, or (3) reducing repeated/boilerplate pages.
 
 ### Quiz Not Loading
 - Check browser console for errors

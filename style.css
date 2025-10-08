@@ -29,6 +29,7 @@
     --hint-bg: #fef3c7;
     --hint-border: #fde047;
     --hint-text: #854d0e;
+    --warning-text: #b7791f;
 }
 
 [data-theme="dark"] {
@@ -59,6 +60,7 @@
     --hint-bg: #422006;
     --hint-border: #eab308;
     --hint-text: #fde047;
+    --warning-text: #fbbf24;
 }
 
 body {
@@ -348,28 +350,7 @@ button:hover {
     accent-color: var(--accent-primary);
 }
 
-/* Admin login styles */
-.admin-login {
-    max-width: 450px;
-    margin: 2rem auto;
-    padding: 2rem;
-}
-
-.admin-login input {
-    width: 100%;
-    padding: 1rem;
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    font-size: 1rem;
-    background: var(--bg-tertiary);
-    color: var(--text-primary);
-}
-
-.admin-login input:focus {
-    outline: none;
-    border-color: var(--accent-primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-}
+/* (Removed obsolete admin login form styles) */
 
 /* Loader animation */
 .loader {
@@ -602,6 +583,18 @@ button:hover {
     background-color: var(--error-bg);
     color: var(--error-text);
     border: 1px solid var(--error-border);
+}
+
+.status-message.warning {
+    background-color: var(--hint-bg);
+    color: var(--warning-text);
+    border: 1px solid var(--hint-border);
+}
+
+.status-message.info {
+    background-color: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
 }
 
 /* Drag and Drop Styles */

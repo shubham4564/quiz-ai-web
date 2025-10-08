@@ -134,13 +134,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearQuizBtn = document.getElementById('clear-quiz-btn');
     if(clearQuizBtn) {
         clearQuizBtn.addEventListener('click', () => {
-            if (confirm('Are you sure you want to delete all quiz data? This action cannot be undone.')) {
+            // Inline non-blocking confirmation UX with undo
+            const existing = document.getElementById('danger-status');
+            if (existing) existing.remove();
+            const status = document.createElement('div');
+            status.id = 'danger-status';
+            status.className = 'status-message warning';
+            status.style.marginTop = '0.75rem';
+            status.innerHTML = `⚠️ Delete all quiz data? <button id="confirm-clear" class="btn-danger" style="margin-left:.5rem;">Yes, Delete</button> <button id="cancel-clear" class="btn-secondary" style="margin-left:.5rem;">Cancel</button>`;
+            clearQuizBtn.parentElement.appendChild(status);
+            document.getElementById('cancel-clear').onclick = () => status.remove();
+            document.getElementById('confirm-clear').onclick = () => {
+                const backup = localStorage.getItem('quizData');
                 localStorage.removeItem('quizData');
-                // We need a status message element in the danger zone for this to work.
-                // Let's assume there isn't one and just log to console.
-                console.log('All quiz data has been cleared.');
-                alert('All quiz data has been cleared.');
-            }
+                status.innerHTML = `🗑️ All quiz data deleted. <button id="undo-clear" class="btn-secondary" style="margin-left:.5rem;">Undo</button>`;
+                const undoBtn = document.getElementById('undo-clear');
+                if (undoBtn) {
+                    undoBtn.onclick = () => {
+                        if (backup) localStorage.setItem('quizData', backup);
+                        status.textContent = '✅ Restore successful.';
+                        setTimeout(()=>status.remove(), 3000);
+                    };
+                }
+                setTimeout(()=>{ if (status && status.parentElement) status.remove(); }, 7000);
+            };
         });
     }
 
@@ -298,16 +315,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // Prefer latest stable model name. Fallback sequence if selected model returns not found.
             // Model list updated to supported public model IDs for v1beta generateContent
             const candidateModels = [
-                // 'models/gemini-2.5-flash',
-                // 'models/gemini-2.5-flash-8b',
-                'models/gemini-2.5-pro'
+                // Ordered by quality first, then speed fallbacks
+                'models/gemini-2.5-pro',
+                'models/gemini-1.5-pro',
+                'models/gemini-1.5-flash',
+                'models/gemini-1.5-flash-8b'
             ];
             let lastModelError = null;
 
             // Build prompt once
             
-            const prompt = `Based on the following text from a PDF document, generate a JSON array of ${numQuestions} multiple-choice quiz questions.
-The questions should cover a range of difficulty levels and topics included in the document. For each question, provide four answer options, with one correct answer. Include a brief explanation for the correct answer.
+            const isRegeneration = !!localStorage.getItem('quizData');
+            const prompt = `You are an AI quiz generator. ${isRegeneration ? 'IMPORTANT: Produce a completely new, non-overlapping set of questions different from any previously generated for this PDF.' : 'Generate an initial set of questions.'}
+Based on the following text from a PDF document, generate a JSON array of ${numQuestions} multiple-choice quiz questions.
+The questions should cover a range of difficulty levels and distinct topics included in the document. For each question, provide four answer options, with exactly one correct answer. Include a brief explanation for the correct answer and explanations for every option.
 
 DOCUMENT TEXT:
 """
@@ -315,13 +336,15 @@ ${uploadedPDFContent.substring(0, 15000)}
 """
 
 REQUIREMENTS:
-- Generate ${numQuestions} multiple-choice questions.
-- Each question must have 4 options.
-- Provide a correct answer for each question.
-- Include an explanation for why each option is correct or incorrect.
-- Format the output as a JSON array of question objects.
+- Generate exactly ${numQuestions} multiple-choice questions.
+- Each question must have exactly 4 distinct options.
+- Exactly one option must have "correct": true.
+- Each option MUST include its own explanation string.
+- If this is a regeneration request, DO NOT repeat or paraphrase earlier questions; focus on different concepts or angles.
+- Avoid trivial duplication. Vary stems, verbs, and cognitive level (recall, understanding, application, analysis).
+- Format the output as a JSON array ONLY (no markdown fences, no commentary before or after). 
 
-JSON OUTPUT FORMAT:
+JSON OUTPUT FORMAT (strict):
 [
   {
     "question": "...",
@@ -398,15 +421,107 @@ JSON OUTPUT FORMAT:
                 .trim();
 
             // Attempt to extract JSON if extra commentary exists
-            const jsonMatch = generatedText.match(/\[.*\]/s);
+            const jsonMatch = generatedText.match(/\[[\s\S]*\]/);
             if (!jsonMatch) {
                 throw new Error('Model output did not include a JSON array.');
             }
+            let rawJSONArray = jsonMatch[0];
+
+            function repairJSONArray(raw) {
+                let working = raw.trim();
+                // Remove markdown artifacts just in case
+                working = working.replace(/```/g,'');
+                // Remove trailing commas before closing braces/brackets
+                working = working.replace(/,\s*([}\]])/g, '$1');
+                // Balance brackets rudimentarily
+                const openSq = (working.match(/\[/g)||[]).length;
+                const closeSq = (working.match(/\]/g)||[]).length;
+                if (openSq > closeSq) {
+                    working += ']'.repeat(openSq-closeSq);
+                }
+                // Trim anything after the last closing bracket
+                const lastClose = working.lastIndexOf(']');
+                if (lastClose !== -1) working = working.slice(0, lastClose+1);
+                return working;
+            }
+
+            function salvageObjects(raw) {
+                const objs = [];
+                let depth = 0, start = -1;
+                for (let i=0;i<raw.length;i++) {
+                    const ch = raw[i];
+                    if (ch === '{') {
+                        if (depth === 0) start = i;
+                        depth++;
+                    } else if (ch === '}') {
+                        depth--;
+                        if (depth === 0 && start !== -1) {
+                            const fragment = raw.slice(start, i+1);
+                            try {
+                                const obj = JSON.parse(fragment);
+                                if (obj && obj.question && Array.isArray(obj.options)) objs.push(obj);
+                            } catch(_) { /* ignore bad fragment */ }
+                            start = -1;
+                        }
+                    }
+                }
+                return objs;
+            }
+
             let questions = [];
             try {
-                questions = JSON.parse(jsonMatch[0]);
-            } catch (parseErr) {
-                throw new Error('Failed to parse JSON: ' + parseErr.message.substring(0,120));
+                questions = JSON.parse(rawJSONArray);
+            } catch (e1) {
+                // Try repair heuristics
+                let repaired = repairJSONArray(rawJSONArray);
+                try {
+                    questions = JSON.parse(repaired);
+                    showAiStatus('⚠️ AI response was auto-repaired due to minor formatting issues.', 'error');
+                } catch(e2) {
+                    // Salvage individual objects
+                    const salvaged = salvageObjects(repaired);
+                    if (salvaged.length) {
+                        questions = salvaged;
+                        showAiStatus(`⚠️ Partial recovery: parsed ${salvaged.length} question(s) from malformed AI output.`, 'error');
+                    } else {
+                        throw new Error('Failed to parse JSON after repair attempts: ' + e1.message.substring(0,80));
+                    }
+                }
+            }
+
+            // Optionally expose raw output for debugging
+            let rawOut = document.getElementById('ai-raw-output');
+            if (!rawOut) {
+                rawOut = document.createElement('pre');
+                rawOut.id = 'ai-raw-output';
+                rawOut.style.display = 'none';
+                rawOut.style.maxHeight = '240px';
+                rawOut.style.overflow = 'auto';
+                rawOut.style.background = 'var(--bg-tertiary)';
+                rawOut.style.padding = '0.75rem 1rem';
+                rawOut.style.border = '1px solid var(--border-color)';
+                const aiSection = document.getElementById('ai-section');
+                if (aiSection) aiSection.appendChild(rawOut);
+            }
+            rawOut.textContent = generatedText;
+            // Add a toggle button once
+            if (!document.getElementById('toggle-raw-ai')) {
+                const toggleBtn = document.createElement('button');
+                toggleBtn.id = 'toggle-raw-ai';
+                toggleBtn.textContent = '🔍 Show Raw AI Output';
+                toggleBtn.className = 'btn-secondary';
+                toggleBtn.style.marginTop = '0.5rem';
+                toggleBtn.onclick = () => {
+                    if (rawOut.style.display === 'none') {
+                        rawOut.style.display = 'block';
+                        toggleBtn.textContent = '🙈 Hide Raw AI Output';
+                    } else {
+                        rawOut.style.display = 'none';
+                        toggleBtn.textContent = '🔍 Show Raw AI Output';
+                    }
+                };
+                const aiSection = document.getElementById('ai-section');
+                if (aiSection) aiSection.appendChild(toggleBtn);
             }
             
             // Validate
@@ -440,13 +555,92 @@ JSON OUTPUT FORMAT:
                 }
             }
             
-            // Save to localStorage
-            localStorage.setItem('quizData', JSON.stringify(questions));
-            
-            progressDiv.style.display = 'none';
-            generateBtn.disabled = false;
-            generateBtn.style.opacity = '1';
-            showAiStatus(`✅ Successfully generated ${questions.length} questions!`, 'success');
+            // If fewer than requested, attempt supplemental generations
+            const desiredCount = parseInt(numQuestions, 10) || questions.length;
+            let attempt = 0;
+            const maxSupplemental = 5; // allow a couple more attempts
+
+            async function supplementIfNeeded() {
+                while (questions.length < desiredCount && attempt < maxSupplemental) {
+                    attempt++;
+                    const remaining = desiredCount - questions.length;
+                    progressText.textContent = `Supplementing (batch ${attempt}) – need ${remaining} more...`;
+
+                    // Provide prior question list (texts) so model can avoid duplication
+                    const priorList = questions.map(q => q.question).slice(0, 100); // cap to avoid excessive tokens
+                    const supplementalPrompt = `You previously generated ${questions.length} quiz question objects (JSON) for a PDF but need ${remaining} MORE distinct ones.\n\nDO NOT repeat, paraphrase, or trivially alter these existing question stems:\n${priorList.map(q=>`- ${q}`).join('\n')}\n\nReturn ONLY a JSON array of EXACTLY ${remaining} NEW question objects using the SAME schema (no markdown fences, no commentary). Each must have 4 options, exactly one with \"correct\": true, and every option needs an explanation. If you cannot produce exactly ${remaining}, produce as many as possible but try very hard to reach the target.`;
+
+                    try {
+                        const apiURLSupplement = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`;
+                        const resp = await fetch(apiURLSupplement, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ parts: [{ text: supplementalPrompt }] }],
+                                generationConfig: { temperature: 0.75, maxOutputTokens: 3584 }
+                            })
+                        });
+                        if (!resp.ok) {
+                            await resp.json().catch(()=>({}));
+                            continue; // try next batch
+                        }
+                        const supData = await resp.json();
+                        let supText = '';
+                        try { supText = supData.candidates[0].content.parts.map(p=>p.text||'').join('\n'); } catch(_) { continue; }
+                        supText = supText.replace(/```json\s*/gi,'').replace(/```/g,'').trim();
+                        const match = supText.match(/\[[\s\S]*\]/);
+                        if (!match) continue;
+                        let supRaw = match[0];
+                        // Reuse repair + salvage utilities from above scope
+                        let supArr = [];
+                        try {
+                            supArr = JSON.parse(supRaw);
+                        } catch(e1) {
+                            try { supArr = JSON.parse(repairJSONArray(supRaw)); } catch(e2) {
+                                const salv = salvageObjects(supRaw);
+                                if (salv.length) supArr = salv; else continue;
+                            }
+                        }
+                        const existingQuestionsSet = new Set(questions.map(q => q.question.trim().toLowerCase()));
+                        for (const q of supArr) {
+                            if (!q || !q.question || !Array.isArray(q.options) || q.options.length !== 4) continue;
+                            const key = q.question.trim().toLowerCase();
+                            if (existingQuestionsSet.has(key)) continue;
+                            // Minimal normalization (mirror earlier validation stage logic partly)
+                            let correctFound = 0;
+                            q.options.forEach(opt => { if (opt.correct) correctFound++; });
+                            if (correctFound !== 1) continue;
+                            existingQuestionsSet.add(key);
+                            questions.push(q);
+                            if (questions.length >= desiredCount) break;
+                        }
+                    } catch(_) {
+                        // ignore and proceed to next attempt
+                    }
+                }
+            }
+
+            if (questions.length < desiredCount) {
+                await supplementIfNeeded();
+            }
+
+            if (questions.length >= desiredCount) {
+                if (questions.length > desiredCount) {
+                    questions = questions.slice(0, desiredCount);
+                }
+                localStorage.setItem('quizData', JSON.stringify(questions));
+                progressDiv.style.display = 'none';
+                generateBtn.disabled = false;
+                generateBtn.style.opacity = '1';
+                showAiStatus(`✅ Generated all ${questions.length} questions successfully!`, 'success');
+            } else {
+                // Do NOT save partial set (user wants strict exact outcome)
+                progressDiv.style.display = 'none';
+                generateBtn.disabled = false;
+                generateBtn.style.opacity = '1';
+                showAiStatus(`❌ Only generated ${questions.length} / ${desiredCount} questions. No partial quiz saved. Try: (1) Lowering requested count, (2) Providing a richer PDF excerpt, or (3) Retrying.`, 'error');
+                return; // abort
+            }
             
         } catch (error) {
             console.error('Error generating quiz:', error);
@@ -543,10 +737,16 @@ JSON OUTPUT FORMAT:
                 
                 // Show success for 3 seconds, then prompt to take quiz
                 setTimeout(() => {
-                    if (confirm('Questions saved! Would you like to take the quiz now?')) {
-                        switchView('quiz');
-                    }
-                }, 1500);
+                    // Inline prompt instead of blocking confirm
+                    const inline = document.createElement('div');
+                    inline.className = 'status-message info';
+                    inline.style.marginTop = '0.75rem';
+                    inline.innerHTML = `Ready to take the quiz? <button id="go-to-quiz" class="btn-primary" style="margin-left:.5rem;">Start Now</button>`;
+                    statusMessage.parentElement.appendChild(inline);
+                    const btn = document.getElementById('go-to-quiz');
+                    if (btn) btn.onclick = () => { switchView('quiz'); inline.remove(); };
+                    setTimeout(()=> { if (inline && inline.parentElement) inline.remove(); }, 8000);
+                }, 1200);
 
             } catch (error) {
                 showStatus(`❌ Error: ${error.message}`, 'error');
@@ -853,19 +1053,12 @@ JSON OUTPUT FORMAT:
             const generateMoreBtn = document.getElementById('generate-more-btn');
             if (generateMoreBtn) {
                 generateMoreBtn.addEventListener('click', () => {
-                    if (!isAdminAuthenticated) {
-                        switchView('admin');
-                        if (loginError) {
-                            loginError.textContent = '🔐 Please log in to generate more questions.';
-                            loginError.style.display = 'block';
-                        }
-                        return;
-                    }
-
                     switchView('admin');
                     setTimeout(() => {
                         const generateBtn = document.getElementById('generate-btn');
                         if (generateBtn) {
+                            // Clear existing quizData to encourage generation of new questions
+                            try { localStorage.removeItem('quizData'); } catch(e) {}
                             generateBtn.click();
                         }
                     }, 150);
