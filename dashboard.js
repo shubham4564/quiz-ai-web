@@ -372,6 +372,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // PDF UPLOAD HANDLER & DRAG-AND-DROP
     // ============================================
     let uploadedPDFContent = null;
+    // Track whether we excluded first two pages and the last page during extraction
+    let excludedFirstTwoAndLast = false;
 
     // Setup Drag and Drop listeners
     const dropZone = document.getElementById('drop-zone');
@@ -421,14 +423,26 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     const pdf = await pdfjsLib.getDocument(typedarray).promise;
                     let fullText = '';
-                    
-                    for (let i = 1; i <= pdf.numPages; i++) {
+
+                    // Exclude first 2 pages and last page when possible
+                    const totalPages = pdf.numPages;
+                    let startPage = 1;
+                    let endPage = totalPages;
+                    excludedFirstTwoAndLast = false;
+
+                    if (totalPages > 3) {
+                        startPage = 3; // skip pages 1 and 2
+                        endPage = totalPages - 1; // skip last page
+                        excludedFirstTwoAndLast = true;
+                    }
+
+                    for (let i = startPage; i <= endPage; i++) {
                         const page = await pdf.getPage(i);
                         const textContent = await page.getTextContent();
                         const pageText = textContent.items.map(item => item.str).join(' ');
                         fullText += pageText + '\n';
                     }
-                    
+
                     uploadedPDFContent = fullText;
                     console.log('PDF content extracted successfully');
                 } catch (error) {
@@ -542,6 +556,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const maxChars = Math.max(1000, Math.floor(meta.inputTokenLimit * approxCharsPerToken * 0.9));
             const pdfSlice = uploadedPDFContent.substring(0, maxChars);
             const prompt = `You are an AI quiz generator. ${isRegeneration ? 'IMPORTANT: Produce a completely new, non-overlapping set of questions different from any previously generated for this PDF.' : 'Generate an initial set of questions.'}
+Important: ${excludedFirstTwoAndLast ? 'The first two pages and the last page have been excluded from the excerpt. Do NOT generate questions based on any front matter or end material if residual text appears.' : 'Ignore the first two pages and the last page (front matter and references). Do NOT generate questions based on those pages.'}
 Based on the following text from a PDF document, generate a JSON array of ${numQuestions} multiple-choice quiz questions.
 The questions should cover distinct topics included in the document. For each question, provide four answer options, with exactly one correct answer. Include a brief explanation for the correct answer and explanations for every option.
 
@@ -752,7 +767,7 @@ JSON OUTPUT FORMAT (strict):
 
                     // Provide prior question list (texts) so model can avoid duplication
                     const priorList = questions.map(q => q.question).slice(0, 100); // cap to avoid excessive tokens
-                    const supplementalPrompt = `You previously generated ${questions.length} quiz question objects (JSON) for a PDF but need ${remaining} MORE distinct ones.\n\nDO NOT repeat, paraphrase, or trivially alter these existing question stems:\n${priorList.map(q=>`- ${q}`).join('\n')}\n\nReturn ONLY a JSON array of EXACTLY ${remaining} NEW question objects using the SAME schema (no markdown fences, no commentary). Each must have 4 options, exactly one with \"correct\": true, and every option needs an explanation. If you cannot produce exactly ${remaining}, produce as many as possible but try very hard to reach the target.`;
+                    const supplementalPrompt = `Important: ${excludedFirstTwoAndLast ? 'The provided excerpt excludes the first two pages and the last page; continue to ignore those and avoid questions from front matter or end material.' : 'Ignore the first two pages and the last page of the PDF; do not generate questions from front matter or ending/appendix material.'}\n\nYou previously generated ${questions.length} quiz question objects (JSON) for a PDF but need ${remaining} MORE distinct ones.\n\nDO NOT repeat, paraphrase, or trivially alter these existing question stems:\n${priorList.map(q=>`- ${q}`).join('\n')}\n\nReturn ONLY a JSON array of EXACTLY ${remaining} NEW question objects using the SAME schema (no markdown fences, no commentary). Each must have 4 options, exactly one with \"correct\": true, and every option needs an explanation. If you cannot produce exactly ${remaining}, produce as many as possible but try very hard to reach the target.`;
 
                     try {
                         const apiURLSupplement = `https://generativelanguage.googleapis.com/v1beta/${REQUIRED_MODEL}:generateContent?key=${apiKey}`;
