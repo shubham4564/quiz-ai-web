@@ -487,6 +487,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // ============================================
     // Cache for discovered models during a session
     let geminiModelCache = null;
+    // Local fallback: create a concise hint that avoids disclosing the answer
+    function generateNonRevealingHint(questionText, options) {
+        try {
+            const optionTexts = (options || []).map(o => (o && o.text ? String(o.text).toLowerCase() : ''));
+            const q = String(questionText || '');
+            const words = q.replace(/[\(\)\[\]\{\}\.,;:!?\"'`]/g,'').split(/\s+/).filter(Boolean);
+            const stop = new Set(['the','is','are','was','were','a','an','and','or','of','to','in','on','for','with','by','from','that','this','these','those','as','at','be','it','its','into','about','which','what','who','whom','whose','when','where','why','how','can','could','should','would','may','might','must','does','do','did','has','have','had']);
+            const keywords = [];
+            for (const raw of words) {
+                const w = raw.toLowerCase();
+                if (w.length < 4) continue;
+                if (stop.has(w)) continue;
+                if (optionTexts.some(t=> t.includes(w))) continue; // avoid quoting options
+                if (!keywords.includes(w)) keywords.push(w);
+                if (keywords.length >= 4) break;
+            }
+            if (keywords.length >= 2) return `Consider the key ideas around: ${keywords.join(', ')}.`;
+            return 'Focus on the underlying concept and definitions rather than examples or trivia.';
+        } catch(_) {
+            return 'Think about the key concepts without focusing on specific answer choices.';
+        }
+    }
 
     async function fetchAvailableModels(apiKey) {
         if (geminiModelCache) return geminiModelCache;
@@ -552,10 +574,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(`Required model ${REQUIRED_MODEL} missing token limit metadata.`);
             }
             const isRegeneration = !!localStorage.getItem('quizData');
-            const approxCharsPerToken = 4;
-            const maxChars = Math.max(1000, Math.floor(meta.inputTokenLimit * approxCharsPerToken * 0.9));
-            const pdfSlice = uploadedPDFContent.substring(0, maxChars);
-            const prompt = `You are an AI quiz generator. ${isRegeneration ? 'IMPORTANT: Produce a completely new, non-overlapping set of questions different from any previously generated for this PDF.' : 'Generate an initial set of questions.'}
+                        const approxCharsPerToken = 4;
+                        const maxChars = Math.max(1000, Math.floor(meta.inputTokenLimit * approxCharsPerToken * 0.9));
+                        const pdfSlice = uploadedPDFContent.substring(0, maxChars);
+                        const prompt = `You are an AI quiz generator. ${isRegeneration ? 'IMPORTANT: Produce a completely new, non-overlapping set of questions different from any previously generated for this PDF.' : 'Generate an initial set of questions.'}
 Important: ${excludedFirstTwoAndLast ? 'The first two pages and the last page have been excluded from the excerpt. Do NOT generate questions based on any front matter or end material if residual text appears.' : 'Ignore the first two pages and the last page (front matter and references). Do NOT generate questions based on those pages.'}
 Based on the following text from a PDF document, generate a JSON array of ${numQuestions} multiple-choice quiz questions.
 The questions should cover distinct topics included in the document. For each question, provide four answer options, with exactly one correct answer. Include a brief explanation for the correct answer and explanations for every option.
@@ -570,21 +592,23 @@ REQUIREMENTS:
 - Each question must have exactly 4 distinct options.
 - Exactly one option must have "correct": true.
 - Each option MUST include its own explanation string.
+- Each question MUST include a concise "hint" that helps recall/understanding without revealing the correct option or quoting any option text.
 - If this is a regeneration request, DO NOT repeat or paraphrase earlier questions; focus on different concepts or angles.
 - Avoid trivial duplication. Vary stems, verbs, and cognitive level (recall, understanding, application, analysis).
 - Output ONLY a JSON array (no markdown fences, no commentary before or after).
 
 JSON OUTPUT FORMAT (strict):
 [
-  {
-    "question": "...",
-    "options": [
-      {"text": "...", "correct": false, "explanation": "..."},
-      {"text": "...", "correct": true, "explanation": "..."},
-      {"text": "...", "correct": false, "explanation": "..."},
-      {"text": "...", "correct": false, "explanation": "..."}
-    ]
-  }
+    {
+        "question": "...",
+        "hint": "...",
+        "options": [
+            {"text": "...", "correct": false, "explanation": "..."},
+            {"text": "...", "correct": true, "explanation": "..."},
+            {"text": "...", "correct": false, "explanation": "..."},
+            {"text": "...", "correct": false, "explanation": "..."}
+        ]
+    }
 ]`;
             progressText.textContent = `Requesting model: ${REQUIRED_MODEL} ...`;
             const apiURL = `https://generativelanguage.googleapis.com/v1beta/${REQUIRED_MODEL}:generateContent?key=${apiKey}`;
@@ -731,13 +755,18 @@ JSON OUTPUT FORMAT (strict):
             progressText.textContent = 'Validating questions...';
             
             // Validate each question
+            // Validate each question
             for (let i = 0; i < questions.length; i++) {
                 const q = questions[i];
                 if (!q.question || !q.options || q.options.length !== 4) {
                     throw new Error(`Question ${i + 1} is invalid`);
                 }
                 // Normalize & enrich data
-                if (!q.hint) q.hint = 'Think carefully about the key concepts.';
+                // Ensure hint exists and does not disclose any option text
+                const leaksAnswer = (q.hint || '').toLowerCase().includes('correct') || (q.options||[]).some(o => o && o.text && q.hint && q.hint.toLowerCase().includes(String(o.text).toLowerCase()));
+                if (!q.hint || typeof q.hint !== 'string' || leaksAnswer) {
+                    q.hint = generateNonRevealingHint(q.question, q.options);
+                }
                 let correctFound = 0;
                 q.options.forEach((opt, idx) => {
                     if (typeof opt.correct !== 'boolean') {
