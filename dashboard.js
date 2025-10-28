@@ -905,13 +905,31 @@ JSON OUTPUT FORMAT (strict):
     function showAiStatus(message, type) {
         const aiStatusMessage = document.getElementById('ai-status-message');
         if (aiStatusMessage) {
-            aiStatusMessage.textContent = message;
+            // Clear previous content
+            aiStatusMessage.innerHTML = '';
             aiStatusMessage.className = `status-message ${type}`;
-            aiStatusMessage.style.display = 'block';
 
-            setTimeout(() => {
-                aiStatusMessage.style.display = 'none';
-            }, 6000);
+            // Message text
+            const textSpan = document.createElement('span');
+            textSpan.textContent = message;
+            aiStatusMessage.appendChild(textSpan);
+
+            // Close button (user must dismiss)
+            const closeBtn = document.createElement('button');
+            closeBtn.setAttribute('aria-label', 'Dismiss message');
+            closeBtn.textContent = '✖';
+            // Minimal inline styles so it matches surrounding text color and is easily tappable
+            closeBtn.style.marginLeft = '0.75rem';
+            closeBtn.style.background = 'transparent';
+            closeBtn.style.border = 'none';
+            closeBtn.style.cursor = 'pointer';
+            closeBtn.style.color = 'inherit';
+            closeBtn.style.fontSize = '1rem';
+            closeBtn.style.fontWeight = '600';
+            closeBtn.onclick = () => { aiStatusMessage.style.display = 'none'; };
+            aiStatusMessage.appendChild(closeBtn);
+
+            aiStatusMessage.style.display = 'block';
         }
     }
 
