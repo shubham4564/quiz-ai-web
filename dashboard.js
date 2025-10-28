@@ -60,6 +60,17 @@ document.addEventListener('DOMContentLoaded', () => {
     migrateLegacySingleQuizIfNeeded();
     let lastUploadedFileName = null; // capture current PDF file name
 
+    // Helper: in-place Fisher-Yates shuffle
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const tmp = arr[i];
+            arr[i] = arr[j];
+            arr[j] = tmp;
+        }
+        return arr;
+    }
+
     function loadSavedQuizzesList() {
         const container = document.getElementById('saved-quizzes-list');
         const emptyState = document.getElementById('no-saved-quizzes');
@@ -106,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const actions = document.createElement('div');
                 actions.style.display = 'flex';
                 actions.style.gap = '0.35rem';
+                actions.style.alignItems = 'center';
                 const openBtn = document.createElement('button');
                 openBtn.textContent = 'Open';
                 openBtn.className = 'btn-secondary';
@@ -132,7 +144,42 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.stopPropagation();
                     exportSavedQuiz(item.id);
                 });
+
+                // Shuffle toggle (per-quiz) — let user choose whether to jumble options when launching
+                const shuffleWrap = document.createElement('label');
+                shuffleWrap.style.display = 'inline-flex';
+                shuffleWrap.style.alignItems = 'center';
+                shuffleWrap.style.gap = '0.35rem';
+                shuffleWrap.style.marginRight = '0.35rem';
+                shuffleWrap.style.fontSize = '0.75rem';
+                shuffleWrap.title = 'Shuffle options when taking this quiz';
+
+                const shuffleCheckbox = document.createElement('input');
+                shuffleCheckbox.type = 'checkbox';
+                shuffleCheckbox.checked = !!item.shuffleOptions;
+                shuffleCheckbox.style.width = '14px';
+                shuffleCheckbox.style.height = '14px';
+                shuffleCheckbox.addEventListener('click', (e) => e.stopPropagation());
+                shuffleCheckbox.addEventListener('change', (e) => {
+                    e.stopPropagation();
+                    const data = getQuizCollections();
+                    const idx = data.items.findIndex(i => i.id === item.id);
+                    if (idx === -1) return;
+                    data.items[idx].shuffleOptions = shuffleCheckbox.checked;
+                    saveQuizCollections(data);
+                    // reflect state instantly in UI via a subtle style change
+                    if (shuffleCheckbox.checked) shuffleWrap.style.opacity = '0.95'; else shuffleWrap.style.opacity = '0.8';
+                });
+
+                const shuffleLabel = document.createElement('span');
+                shuffleLabel.textContent = 'Shuffle Options';
+                shuffleLabel.style.color = 'var(--text-tertiary)';
+                shuffleLabel.style.fontSize = '0.7rem';
+                shuffleWrap.appendChild(shuffleCheckbox);
+                shuffleWrap.appendChild(shuffleLabel);
+                shuffleWrap.style.opacity = item.shuffleOptions ? '0.95' : '0.8';
                 actions.appendChild(openBtn);
+                actions.appendChild(shuffleWrap);
                 actions.appendChild(exportBtn);
                 actions.appendChild(deleteBtn);
                 div.appendChild(left);
@@ -145,7 +192,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const collections = getQuizCollections();
         const item = collections.items.find(i=>i.id===id);
         if(!item) return;
-        localStorage.setItem('quizData', JSON.stringify(item.questions));
+
+        // Make a deep copy so we don't mutate the saved canonical questions
+        let questionsToUse = JSON.parse(JSON.stringify(item.questions || []));
+        // If user requested shuffled options for this quiz, jumble each question's options
+        if (item.shuffleOptions) {
+            questionsToUse.forEach(q => {
+                if (Array.isArray(q.options)) {
+                    shuffleArray(q.options);
+                }
+            });
+        }
+
+        localStorage.setItem('quizData', JSON.stringify(questionsToUse));
         setActiveQuizId(id);
         loadSavedQuizzesList();
         switchView('quiz');
