@@ -124,7 +124,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.stopPropagation();
                     deleteSavedQuiz(item.id);
                 });
+                const exportBtn = document.createElement('button');
+                exportBtn.textContent = 'JSON';
+                exportBtn.className = 'btn-secondary';
+                exportBtn.style.fontSize = '0.7rem';
+                exportBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    exportSavedQuiz(item.id);
+                });
                 actions.appendChild(openBtn);
+                actions.appendChild(exportBtn);
                 actions.appendChild(deleteBtn);
                 div.appendChild(left);
                 div.appendChild(actions);
@@ -155,6 +164,160 @@ document.addEventListener('DOMContentLoaded', () => {
         saveQuizCollections(data);
         loadSavedQuizzesList();
         showAiStatus('Deleted quiz','info');
+    }
+
+    // Export raw JSON for a saved quiz (modal with copy/download)
+    function exportSavedQuiz(id) {
+        const collections = getQuizCollections();
+        const item = collections.items.find(i => i.id === id);
+        if (!item) {
+            showAiStatus('❌ Quiz not found for export', 'error');
+            return;
+        }
+        // If an existing overlay is present, remove it
+        const existing = document.getElementById('raw-json-overlay');
+        if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'raw-json-overlay';
+    overlay.className = 'raw-json-overlay';
+
+    const panel = document.createElement('div');
+    panel.className = 'raw-json-panel';
+
+        const header = document.createElement('div');
+        header.style.display = 'flex';
+        header.style.justifyContent = 'space-between';
+        header.style.alignItems = 'center';
+        header.style.marginBottom = '0.5rem';
+
+        const title = document.createElement('strong');
+        title.textContent = `${item.title} — Raw JSON`;
+        title.style.color = 'var(--text-primary)';
+
+        // Helper actions so top and bottom controls share behavior
+    const doCopy = async (text, btn, showStatus = true) => {
+            // immediate UI feedback: change button text and disable briefly
+            let originalText;
+            try {
+                if (btn && btn instanceof HTMLElement) {
+                    originalText = btn.textContent;
+                    btn.textContent = '✅ Copied!';
+                    btn.disabled = true;
+                    btn.setAttribute('aria-pressed', 'true');
+                }
+            } catch (e) { /* ignore UI update failures */ }
+
+            try {
+                await navigator.clipboard.writeText(text);
+                // announce success in the app status area unless caller asked to suppress
+                if (showStatus) showAiStatus('✅ JSON copied to clipboard', 'success');
+            } catch (_) {
+                // fallback: prompt the user to copy manually
+                window.prompt('Copy the JSON below (Cmd/Ctrl+C):', text);
+            } finally {
+                // restore button state after a short delay so user sees the feedback
+                try {
+                    if (btn && btn instanceof HTMLElement) {
+                        setTimeout(() => {
+                            btn.textContent = originalText || '📋 Copy JSON';
+                            btn.disabled = false;
+                            btn.removeAttribute('aria-pressed');
+                        }, 2000);
+                    }
+                } catch (e) { /* ignore restore failures */ }
+            }
+        };
+
+        const doDownload = (text, filename) => {
+            const blob = new Blob([text], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        };
+
+        const topControls = document.createElement('div');
+        topControls.style.display = 'flex';
+        topControls.style.gap = '0.5rem';
+        topControls.style.alignItems = 'center';
+
+
+    const copyBtnTop = document.createElement('button');
+    copyBtnTop.textContent = '📋 Copy JSON';
+    copyBtnTop.className = 'btn-primary';
+    copyBtnTop.style.fontSize = '0.85rem';
+    copyBtnTop.onclick = () => doCopy(JSON.stringify(item.questions, null, 2), copyBtnTop, false);
+
+        const downloadBtnTop = document.createElement('button');
+        downloadBtnTop.textContent = '⬇️ Download';
+        downloadBtnTop.className = 'btn-secondary';
+        downloadBtnTop.style.fontSize = '0.85rem';
+        downloadBtnTop.onclick = () => doDownload(JSON.stringify(item.questions, null, 2), `${(item.fileBase||'quiz').replace(/\s+/g,'_')}_quiz_${item.index || 1}.json`);
+
+        const closeX = document.createElement('button');
+        closeX.textContent = '✖';
+        closeX.className = 'btn-secondary';
+        const closeOverlay = () => {
+            // start closing animation then remove when finished
+            overlay.classList.add('closing');
+            panel.classList.add('closing');
+            // remove after animation completes
+            const cleanup = () => { overlay.removeEventListener('animationend', cleanup); overlay.remove(); };
+            overlay.addEventListener('animationend', cleanup);
+        };
+        closeX.onclick = closeOverlay;
+
+        topControls.appendChild(copyBtnTop);
+        topControls.appendChild(downloadBtnTop);
+
+        header.appendChild(title);
+        header.appendChild(topControls);
+        header.appendChild(closeX);
+
+        const pre = document.createElement('pre');
+        pre.style.background = 'var(--bg-tertiary)';
+        pre.style.padding = '1rem';
+        pre.style.border = '1px solid var(--border-color)';
+        pre.style.borderRadius = '8px';
+        pre.style.whiteSpace = 'pre-wrap';
+        pre.style.wordBreak = 'break-word';
+        pre.style.color = 'var(--text-secondary)';
+        pre.textContent = JSON.stringify(item.questions, null, 2);
+
+        const controls = document.createElement('div');
+        controls.style.display = 'flex';
+        controls.style.gap = '0.5rem';
+        controls.style.marginTop = '0.75rem';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.textContent = '📋 Copy JSON';
+    copyBtn.className = 'btn-primary';
+    copyBtn.onclick = () => doCopy(pre.textContent, copyBtn, false);
+
+        const downloadBtn = document.createElement('button');
+        downloadBtn.textContent = '⬇️ Download';
+        downloadBtn.className = 'btn-secondary';
+        downloadBtn.onclick = () => doDownload(pre.textContent, `${(item.fileBase||'quiz').replace(/\s+/g,'_')}_quiz_${item.index || 1}.json`);
+
+        controls.appendChild(copyBtn);
+        controls.appendChild(downloadBtn);
+
+        panel.appendChild(header);
+        panel.appendChild(pre);
+        panel.appendChild(controls);
+
+        // Close when clicking outside the panel
+    overlay.onclick = (e) => { if (e.target === overlay) closeOverlay(); };
+    // Prevent clicks inside the panel from closing
+    panel.onclick = (e) => e.stopPropagation();
+
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
     }
 
     // ============================================

@@ -803,3 +803,49 @@ button:hover {
 .quiz-results {
     text-align: center;
 }
+
+/* Raw JSON modal animations and styles */
+.raw-json-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2,6,23,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: overlayFadeIn 180ms ease forwards;
+}
+
+.raw-json-panel {
+    width: min(920px, 95vw);
+    max-height: 85vh;
+    overflow: auto;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 8px 40px rgba(2,6,23,0.35);
+    transform-origin: center center;
+    animation: panelPopIn 200ms cubic-bezier(.2,.9,.2,1) forwards;
+}
+
+.raw-json-overlay.closing { animation: overlayFadeOut 160ms ease forwards; }
+.raw-json-panel.closing { animation: panelPopOut 160ms cubic-bezier(.4,.0,.2,1) forwards; }
+
+@keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes overlayFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+@keyframes panelPopIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes panelPopOut {
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to { opacity: 0; transform: translateY(8px) scale(0.98); }
+}
