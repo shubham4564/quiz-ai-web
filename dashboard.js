@@ -1261,8 +1261,9 @@ JSON OUTPUT FORMAT (strict):
         // Restore the original quiz structure if it was replaced by results
         if (!document.getElementById('question')) {
             quizContainer.innerHTML = `
+                <div class="quiz-title" id="current-quiz-title" style="margin-bottom:0.5rem; color:var(--text-secondary); font-weight:600;"></div>
                 <div class="progress-container">
-                    <div id="progress-bar"></div>
+                    <div class="progress-track"><div id="progress-bar" class="progress-fill" style="width:0;"></div></div>
                     <span id="progress-text"></span>
                 </div>
                 <div id="question-nav" class="question-nav"></div>
@@ -1285,12 +1286,30 @@ JSON OUTPUT FORMAT (strict):
         // Clear previous state
         quizControls.innerHTML = ''; // Clear buttons
         
-        // Update progress bar
+        // Update quiz title above progress
+        const quizTitleEl = document.getElementById('current-quiz-title');
+        try {
+            const active = getActiveQuiz();
+            quizTitleEl.textContent = active && active.title ? active.title : (localStorage.getItem('quizTitle') || 'Current Quiz');
+            // If the quiz is a manual one without stored title, prefer a clearer label
+            if (!active || !active.title) {
+                // If we have file info from collections, show the file base
+                const collections = getQuizCollections();
+                const activeId = collections.activeQuizId;
+                if (!activeId) quizTitleEl.textContent = 'Custom Quiz';
+            }
+        } catch (e) {
+            if (quizTitleEl) quizTitleEl.textContent = 'Current Quiz';
+        }
+
+        // Update progress bar (fill width)
         const progressBar = document.getElementById('progress-bar');
         const progressText = document.getElementById('progress-text');
         const progress = ((currentQuiz + 1) / quizData.length) * 100;
-        progressBar.style.width = `${progress}%`;
-        progressText.textContent = `${currentQuiz + 1} / ${quizData.length}`;
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+        }
+        if (progressText) progressText.textContent = `${currentQuiz + 1} / ${quizData.length}`;
 
         // Build / rebuild question navigation buttons
         if (navContainer) {

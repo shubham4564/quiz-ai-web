@@ -336,14 +336,24 @@ button:hover {
     margin-bottom: 1rem;
 }
 
-#progress-bar {
+/* Progress track (background) and fill (colored completed portion) */
+.progress-track {
     flex: 1 1 auto;
-    height: 8px;
-    background: var(--accent-primary);
-    border-radius: 8px;
+    height: 10px;
+    background: var(--bg-tertiary);
+    border-radius: 999px;
     overflow: hidden;
     border: 1px solid var(--border-color);
     max-width: 100%;
+}
+
+.progress-fill,
+#progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-hover));
+    border-radius: 999px 0 0 999px;
+    transition: width 300ms ease;
 }
 
 #progress-text {
@@ -351,6 +361,12 @@ button:hover {
     font-weight: 600;
     font-size: 0.95rem;
     white-space: nowrap;
+}
+
+.quiz-title {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    font-weight: 600;
 }
 
 #quiz-container h2 {
