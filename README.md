@@ -1,4 +1,4 @@
-# 🎓 AI-Powered Quiz Dashboard
+# 🎓 AI-Powered Quiz Dashboard - SHjoshi
 
 A modern, feature-rich quiz application with AI-powered quiz generation from PDF documents using Google's Gemini AI.
 
