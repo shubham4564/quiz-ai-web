@@ -261,6 +261,12 @@ body {
     font-weight: 600;
 }
 
+/* Ensure saved quizzes and other section-level h4 headings follow theme text color */
+.saved-quizzes-section h4,
+.dashboard-content h4 {
+    color: var(--text-primary);
+}
+
 .instructions p, .instructions ul {
     color: var(--text-secondary);
     font-size: 0.9rem;
@@ -320,6 +326,31 @@ button:hover {
 /* Quiz specific styles */
 #quiz-container {
     width: 100%;
+}
+
+/* Progress indicator (question progress like "1 / 50") */
+.progress-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+#progress-bar {
+    flex: 1 1 auto;
+    height: 8px;
+    background: var(--accent-primary);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    max-width: 100%;
+}
+
+#progress-text {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
 }
 
 #quiz-container h2 {
