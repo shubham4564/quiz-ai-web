@@ -1160,6 +1160,34 @@ JSON OUTPUT FORMAT (strict):
                 // Save to localStorage
                 localStorage.setItem('quizData', JSON.stringify(newQuestions));
 
+                // Persist into collections so it shows on Home with the provided name
+                try {
+                    const collections = getQuizCollections();
+                    const manualNameEl = document.getElementById('manual-quiz-name');
+                    const providedName = manualNameEl && manualNameEl.value.trim() ? manualNameEl.value.trim() : '';
+                    const baseName = providedName || 'Manual';
+                    const existingForFile = collections.items.filter(i => i.fileBase === baseName);
+                    const nextIndex = existingForFile.length + 1;
+                    const title = providedName ? providedName : `Manual Quiz ${nextIndex}`;
+                    const id = `q_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+                    collections.items.push({
+                        id,
+                        fileBase: baseName,
+                        fileName: 'Manual Entry',
+                        index: nextIndex,
+                        title,
+                        createdAt: Date.now(),
+                        questions: newQuestions
+                    });
+                    collections.activeQuizId = id;
+                    saveQuizCollections(collections);
+                    loadSavedQuizzesList();
+                    // clear input fields
+                    if (manualNameEl) manualNameEl.value = '';
+                } catch (e) {
+                    console.warn('Failed saving manual quiz to collections', e);
+                }
+
                 showStatus(`✅ Success! ${newQuestions.length} question(s) have been saved.`, 'success');
                 questionsTextArea.value = '';
                 
