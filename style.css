@@ -323,6 +323,26 @@ button:hover {
     border-color: var(--border-hover);
 }
 
+/* Make secondary buttons inside saved quiz items more visible in dark mode */
+.saved-quiz-item .btn-secondary {
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+}
+
+[data-theme="dark"] .saved-quiz-item .btn-secondary {
+    /* saved-quiz-item uses var(--bg-tertiary) in dark mode which can match the border color;
+       use a faint light border and subtle translucent background for contrast */
+    border-color: rgba(255,255,255,0.12) !important;
+    background: rgba(255,255,255,0.02) !important;
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .saved-quiz-item .btn-secondary:hover {
+    background: rgba(255,255,255,0.04) !important;
+    border-color: rgba(255,255,255,0.18) !important;
+    color: var(--text-primary) !important;
+}
+
 /* Quiz specific styles */
 #quiz-container {
     width: 100%;
